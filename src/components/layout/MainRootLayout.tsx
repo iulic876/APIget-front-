@@ -6,6 +6,7 @@ import { Home, Book, FolderKanban, History, Settings, Users } from "lucide-react
 import { useRouter } from "next/navigation";
 import Router from "next/router";
 import {TeamSwitcher} from "./TeamSwitcher"
+import { NavDropdown } from "./NavUser";
 
 export const MainRootLayout = ({ children }: { children: React.ReactNode }) => {
 
@@ -13,8 +14,8 @@ export const MainRootLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="flex h-screen">
       <aside className="w-[60px] bg-[#272c34] text-white flex flex-col items-center py-4 space-y-6">
-        <div className="w-10 h-10 bg-white rounded-lg" />
-        <nav className="flex flex-col gap-6 mt-6">
+       
+        <nav className="flex flex-col gap-6 mt-12">
           <Home size={20} onClick={() => router.push("/collections")} />
           <Book size={20} onClick={() => router.push("/flow")} />
           <FolderKanban size={20} />
@@ -26,14 +27,21 @@ export const MainRootLayout = ({ children }: { children: React.ReactNode }) => {
       <div className="flex flex-col flex-1 overflow-hidden">
         <header className="h-12 bg-[#272c34] text-white flex items-center px-4">
           <div className="w-1/6">
-
-          <TeamSwitcher
-            teams={["Sirius", "Alpha", "DevOps"]}
-            defaultTeam="Sirius"
+            <TeamSwitcher
+              teams={["Sirius", "Alpha", "DevOps"]}
+              defaultTeam="Sirius"
             />
-            </div>
+          </div>
 
-          <div className="ml-auto text-xs">User</div>
+          <div className="ml-auto text-xs">
+            <NavDropdown
+              user={{
+                name: "Iulian",
+                email: "botnaruiulian388@gmail.com",
+                avatar: "/your-avatar.png", // optional
+              }}
+            />
+          </div>
         </header>
         <main className="flex-1 bg-[#161b22] overflow-hidden">{children}</main>
       </div>

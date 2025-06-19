@@ -114,7 +114,7 @@ export const RequestBlock = ({
             Save request
           </Button>
         </div>
-        <div className="flex items-center">
+        <div className="flex items-center gap-2">
           <MethodSelector value={method} onChange={setMethod} />
           <input
             className="w-full px-4 py-2 rounded-md bg-[#21262d] text-white"
