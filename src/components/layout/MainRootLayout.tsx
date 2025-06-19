@@ -5,6 +5,7 @@ import { Navbar } from "./Navbar";
 import { Home, Book, FolderKanban, History, Settings, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Router from "next/router";
+import {TeamSwitcher} from "./TeamSwitcher"
 
 export const MainRootLayout = ({ children }: { children: React.ReactNode }) => {
 
@@ -24,7 +25,14 @@ export const MainRootLayout = ({ children }: { children: React.ReactNode }) => {
       </aside>
       <div className="flex flex-col flex-1 overflow-hidden">
         <header className="h-12 bg-[#272c34] text-white flex items-center px-4">
-          <h1 className="text-sm font-medium">APIgets</h1>
+          <div className="w-1/6">
+
+          <TeamSwitcher
+            teams={["Sirius", "Alpha", "DevOps"]}
+            defaultTeam="Sirius"
+            />
+            </div>
+
           <div className="ml-auto text-xs">User</div>
         </header>
         <main className="flex-1 bg-[#161b22] overflow-hidden">{children}</main>

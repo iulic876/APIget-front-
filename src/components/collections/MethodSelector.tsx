@@ -6,6 +6,14 @@ import { cn } from "@/lib/utils";
 
 const METHODS = ["GET", "POST", "PUT", "DELETE", "PATCH"];
 
+const methodColors: Record<string, string> = {
+  GET: "text-green-400",
+  POST: "text-purple-400",
+  PUT: "text-blue-400",
+  DELETE: "text-red-400",
+  PATCH: "text-orange-400",
+};
+
 export function MethodSelector({
   value,
   onChange,
@@ -19,7 +27,8 @@ export function MethodSelector({
     <Select.Root value={value} onValueChange={onChange}>
       <Select.Trigger
         className={cn(
-          "inline-flex items-center justify-between rounded-md px-4 py-2 bg-[#21262d] text-white text-sm focus:outline-none",
+          "inline-flex items-center justify-between rounded-md px-4 py-2 bg-[#21262d] text-sm focus:outline-none",
+          methodColors[value],
           className
         )}
       >
@@ -36,7 +45,10 @@ export function MethodSelector({
               <Select.Item
                 key={method}
                 value={method}
-                className="relative flex items-center px-3 py-2 rounded-sm text-sm hover:bg-[#2a2f38] focus:bg-[#2a2f38] outline-none cursor-pointer"
+                className={cn(
+                  "relative flex items-center px-3 py-2 rounded-sm text-sm hover:bg-[#2a2f38] focus:bg-[#2a2f38] outline-none cursor-pointer",
+                  methodColors[method]
+                )}
               >
                 <Select.ItemText>{method}</Select.ItemText>
                 <Select.ItemIndicator className="absolute right-2">
