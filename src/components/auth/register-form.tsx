@@ -33,7 +33,18 @@ export function RegisterForm({
     try {
       const response = await ApiService.post('/auth/register', data);
       
-      if (response.ok) {
+      console.log('Registration response:', response);
+      
+      if (response.ok && response.data?.user) {
+        // Store user data
+        const userId = response.data.user.id.toString();
+        console.log('Storing user ID:', userId);
+        
+        localStorage.setItem('user_id', userId);
+        localStorage.setItem('user_name', response.data.user.name);
+        localStorage.setItem('user_email', response.data.user.email);
+        
+        console.log('User data stored in localStorage');
         router.push('/product/collections');
       } else {
         setError(response.error || 'Registration failed. Please try again.');

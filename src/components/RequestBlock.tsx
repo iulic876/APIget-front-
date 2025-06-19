@@ -1,11 +1,13 @@
 // components/RequestBlock.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "../components/ui/button";
 import { Input } from "./ui/input";
 import { useSavedRequests, SavedRequest } from "./context/SavedRequestsContext";
 import { MethodSelector } from "./collections/MethodSelector";
+import { VariableInput } from "./request/components/VariableInput";
+
 
 interface RequestBlockProps {
   tabId: string;
@@ -28,6 +30,11 @@ export const RequestBlock = ({
   const [loading, setLoading] = useState(false);
   const [label, setLabel] = useState(requestLabel);
   const { saveRequest, getRequestById } = useSavedRequests();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUrl(e.target.value);
+  };
+
 
   // Load saved request data if savedRequestId is provided
   useEffect(() => {
@@ -116,11 +123,12 @@ export const RequestBlock = ({
         </div>
         <div className="flex items-center gap-2">
           <MethodSelector value={method} onChange={setMethod} />
-          <input
-            className="w-full px-4 py-2 rounded-md bg-[#21262d] text-white"
-            placeholder="Enter URL..."
+          <VariableInput
+            ref={inputRef}
+            placeholder="Enter request URL"
             value={url}
-            onChange={(e) => setUrl(e.target.value)}
+            onChange={handleUrlChange}
+            className="w-full bg-[#1a1b20] text-white border-[#2e2f3e]"
           />
           <Button
             onClick={handleSend}

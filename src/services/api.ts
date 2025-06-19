@@ -12,6 +12,15 @@ export class ApiService {
   }> {
     try {
       const url = `${API_BASE_URL}${endpoint}`;
+      console.log('Making API request to:', url);
+      console.log('With options:', {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+      });
+
       const response = await fetch(url, {
         ...options,
         headers: {
@@ -20,7 +29,12 @@ export class ApiService {
         },
       });
 
-      const data = await response.json().catch(() => null);
+      console.log('Response status:', response.status);
+      const data = await response.json().catch(() => {
+        console.log('Failed to parse response as JSON');
+        return null;
+      });
+      console.log('Response data:', data);
 
       return {
         data,
@@ -29,6 +43,7 @@ export class ApiService {
         error: !response.ok ? data?.message || 'An error occurred' : undefined,
       };
     } catch (error) {
+      console.error('API request failed:', error);
       return {
         data: null as T,
         status: 500,

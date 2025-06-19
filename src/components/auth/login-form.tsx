@@ -32,16 +32,25 @@ export function LoginForm({
     try {
       const response = await ApiService.post('/auth/login', data);
       
-      if (response.ok) {
-        // Here you might want to store the token from response.data.token
-        if (response.data?.token) {
-          localStorage.setItem('auth_token', response.data.token);
-        }
+      console.log('Login response:', response);
+      
+      if (response.ok && response.data?.user) {
+        // Store user data
+        const userId = response.data.user.id.toString();
+        console.log('Storing user ID:', userId);
+        
+        localStorage.setItem('user_id', userId);
+        localStorage.setItem('user_name', response.data.user.name);
+        localStorage.setItem('user_email', response.data.user.email);
+        
+        console.log('User data stored in localStorage');
         router.push('/product/collections');
       } else {
+        console.error('Login failed:', response.error);
         setError(response.error || 'Invalid email or password');
       }
     } catch (err) {
+      console.error('Login error:', err);
       setError('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
