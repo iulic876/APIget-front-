@@ -4,8 +4,10 @@ import {
   forwardRef,
   useRef,
   useState,
+  useEffect,
   ChangeEvent,
   RefObject,
+  useCallback,
 } from "react";
 import { cn } from "@/lib/utils";
 import {
@@ -24,15 +26,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import ApiService from "@/services/api";
 
-const mockVariables = ["base_url", "token", "user_id", "session_id"];
+interface WorkspaceVariable {
+  id: number;
+  variable_key: string;
+  value: string;
+  scope: VariableScope;
+  workspace_id: number;
+  created_at?: string;
+  updated_at?: string;
+}
 
-type VariableScope = 'global' | 'environment' | 'collection' | 'local';
+type VariableScope = 'global' | 'environment' | 'workspace' | 'local';
 
-interface NewVariable {
+interface Variable {
   key: string;
   value: string;
   scope: VariableScope;
+  workspace_id: number;
 }
 
 type VariableInputProps = {
@@ -47,26 +59,72 @@ export const VariableInput = forwardRef<HTMLInputElement, VariableInputProps>(
     const localRef = useRef<HTMLInputElement>(null);
     const inputRef = (ref as RefObject<HTMLInputElement>) || localRef;
     const [showSuggestions, setShowSuggestions] = useState(false);
-    const [filtered, setFiltered] = useState<string[]>([]);
+    const [variables, setVariables] = useState<WorkspaceVariable[]>([]);
+    const [filtered, setFiltered] = useState<WorkspaceVariable[]>([]);
     const [showCreateDialog, setShowCreateDialog] = useState(false);
-    const [newVariable, setNewVariable] = useState<NewVariable>({
+    const [isCreating, setIsCreating] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [newVariable, setNewVariable] = useState<Variable>({
       key: '',
       value: '',
-      scope: 'environment'
+      scope: 'workspace',
+      workspace_id: 1
     });
     const [currentQuery, setCurrentQuery] = useState('');
+
+    const fetchVariables = useCallback(async () => {
+      try {
+        setIsLoading(true);
+        const userId = localStorage.getItem('user_id');
+        if (!userId) {
+          setError('User ID not found');
+          return;
+        }
+
+        const response = await ApiService.get(`/variables?userId=${parseInt(userId)}`);
+        console.log('Raw API response:', response);
+        
+        if (response.ok) {
+          // The response structure is { variables: [...] }
+          const variablesArray = response.data?.variables || [];
+          console.log('Variables array:', variablesArray);
+          setVariables(variablesArray);
+        } else {
+          console.error('Invalid variables response:', response);
+          setVariables([]);
+        }
+      } catch (err) {
+        console.error('Error fetching variables:', err);
+        setVariables([]);
+        setError('Failed to load variables');
+      } finally {
+        setIsLoading(false);
+      }
+    }, []);
+
+    useEffect(() => {
+      fetchVariables();
+    }, [fetchVariables]);
 
     const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
       const newValue = e.target.value;
       onChange(e);
 
-      const lastWord = newValue.split(/\s+/).pop() || "";
-      if (lastWord.includes("{{")) {
-        const query = lastWord.split("{{")[1].toLowerCase();
+      if (newValue.includes("{{")) {
+        const match = newValue.match(/\{\{([^}]*)/);
+        const query = match ? match[1].toLowerCase() : "";
         setCurrentQuery(query);
-        const filteredVars = mockVariables.filter((v) => 
-          v.toLowerCase().includes(query)
+        console.log('Current variables state:', variables);
+        console.log('Current query:', query);
+        
+        // Make sure we're working with the array of variables
+        const varsArray = Array.isArray(variables) ? variables : [];
+        const filteredVars = varsArray.filter((v) => 
+          v?.variable_key?.toLowerCase().includes(query)
         );
+        
+        console.log('Filtered variables:', filteredVars);
         setFiltered(filteredVars);
         setShowSuggestions(true);
         if (query) {
@@ -79,7 +137,17 @@ export const VariableInput = forwardRef<HTMLInputElement, VariableInputProps>(
       }
     };
 
-    const insertVariable = (variable: string) => {
+    // Debug effect to monitor variables state
+    useEffect(() => {
+      console.log('Variables state updated:', variables);
+    }, [variables]);
+
+    // Debug effect to monitor filtered state
+    useEffect(() => {
+      console.log('Filtered state updated:', filtered);
+    }, [filtered]);
+
+    const insertVariable = (variableKey: string) => {
       const el = inputRef.current;
       if (!el) return;
 
@@ -95,7 +163,7 @@ export const VariableInput = forwardRef<HTMLInputElement, VariableInputProps>(
       if (lastOpenBraceIndex === -1) return;
       
       const newValue = textBeforeCursor.slice(0, lastOpenBraceIndex) + 
-        `{{${variable}}}` + 
+        `{{${variableKey}}}` + 
         textAfterCursor;
 
       const event = {
@@ -106,24 +174,65 @@ export const VariableInput = forwardRef<HTMLInputElement, VariableInputProps>(
       onChange(event);
 
       requestAnimationFrame(() => {
-        const newCursorPos = lastOpenBraceIndex + variable.length + 4;
+        const newCursorPos = lastOpenBraceIndex + variableKey.length + 4;
         el.focus();
         el.setSelectionRange(newCursorPos, newCursorPos);
       });
     };
 
-    const handleSuggestionClick = (variable: string) => {
+    const handleSuggestionClick = (variable: WorkspaceVariable) => {
       setShowSuggestions(false);
       setFiltered([]);
-      insertVariable(variable);
+      insertVariable(variable.variable_key);
     };
 
-    const handleCreateVariable = () => {
-      // Here you would typically save the variable to your backend/store
-      console.log('Creating new variable:', newVariable);
-      mockVariables.push(newVariable.key); // Just for demo
-      setShowCreateDialog(false);
-      insertVariable(newVariable.key);
+    const handleCreateVariable = async () => {
+      try {
+        setIsCreating(true);
+        setError(null);
+
+        if (!newVariable.key || !newVariable.value) {
+          setError('Key and value are required');
+          return;
+        }
+
+        const userId = localStorage.getItem('user_id');
+        if (!userId) {
+          setError('User ID not found');
+          return;
+        }
+
+        const variableData = {
+          key: newVariable.key,
+          value: newVariable.value,
+          scope: newVariable.scope,
+          workspace_id: parseInt(userId)
+        };
+
+        const response = await ApiService.post(`/variables?userId=${parseInt(userId)}`, variableData);
+        
+        if (response.ok && response.data) {
+          setShowCreateDialog(false);
+          // Reset form
+          setNewVariable({
+            key: '',
+            value: '',
+            scope: 'workspace',
+            workspace_id: 1
+          });
+          // Insert the variable
+          insertVariable(newVariable.key);
+          // Refetch variables to get the updated list
+          await fetchVariables();
+        } else {
+          setError(response.error || 'Failed to create variable');
+        }
+      } catch (err) {
+        console.error('Error creating variable:', err);
+        setError('An error occurred while creating the variable');
+      } finally {
+        setIsCreating(false);
+      }
     };
 
     return (
@@ -139,11 +248,20 @@ export const VariableInput = forwardRef<HTMLInputElement, VariableInputProps>(
             className
           )}
         />
-        {showSuggestions && (currentQuery || filtered.length > 0) && (
+        {showSuggestions && (
           <ul className="absolute left-0 top-full mt-1 z-50 rounded-md bg-[#1a1b20] border border-[#2e2f3e] shadow-lg text-white text-sm max-h-40 overflow-y-auto min-w-[200px]">
+            {isLoading && (
+              <li className="px-3 py-2 text-center text-gray-400">Loading variables...</li>
+            )}
+            {error && (
+              <li className="px-3 py-2 text-center text-red-400">{error}</li>
+            )}
+            {!isLoading && !error && filtered.length === 0 && variables.length > 0 && (
+              <li className="px-3 py-2 text-center text-gray-400">No matching variables</li>
+            )}
             {filtered.map((v) => (
               <li
-                key={v}
+                key={v.id}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -151,25 +269,31 @@ export const VariableInput = forwardRef<HTMLInputElement, VariableInputProps>(
                 }}
                 className="px-3 py-2 hover:bg-[#2e2f3e] cursor-pointer"
               >
-                <div className="border-[0.5] border-violet-300 m-1 flex justify-center rounded-md bg-violet-500">
-                  {v}
+                <div className="border-[0.5] border-violet-300 mx-3 flex justify-center rounded-md bg-violet-500">
+                  {v.variable_key}
                 </div>
               </li>
             ))}
-            {currentQuery && !filtered.includes(currentQuery) && (
-              <li
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setShowCreateDialog(true);
-                }}
-                className="px-3 py-2 hover:bg-[#2e2f3e] cursor-pointer border-t border-[#2e2f3e]"
-              >
-                <div className="flex items-center justify-center gap-2 text-violet-400">
-                  <span>+ Create variable "{currentQuery}"</span>
-                </div>
-              </li>
-            )}
+            <li
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowCreateDialog(true);
+                setNewVariable(prev => ({
+                  ...prev,
+                  key: currentQuery || '',
+                  value: ''  // Reset value when opening dialog
+                }));
+              }}
+              className={cn(
+                "px-3 py-2 hover:bg-[#2e2f3e] cursor-pointer",
+                (filtered.length > 0 || isLoading || error) && "border-t border-[#2e2f3e]"
+              )}
+            >
+              <div className="flex items-center justify-center gap-2 text-violet-400">
+                <span>+ Create variable "{currentQuery || 'new'}"</span>
+              </div>
+            </li>
           </ul>
         )}
 
@@ -179,6 +303,11 @@ export const VariableInput = forwardRef<HTMLInputElement, VariableInputProps>(
               <DialogTitle>Create New Variable</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
+              {error && (
+                <div className="text-red-400 text-sm p-2 bg-red-400/10 rounded-md">
+                  {error}
+                </div>
+              )}
               <div className="space-y-2">
                 <label className="text-sm">Variable Name</label>
                 <Input
@@ -208,8 +337,8 @@ export const VariableInput = forwardRef<HTMLInputElement, VariableInputProps>(
                   </SelectTrigger>
                   <SelectContent className="bg-[#1a1b20] border-[#2e2f3e]">
                     <SelectItem value="global" className="text-white hover:bg-[#2e2f3e]">Global</SelectItem>
+                    <SelectItem value="workspace" className="text-white hover:bg-[#2e2f3e]">Workspace</SelectItem>
                     <SelectItem value="environment" className="text-white hover:bg-[#2e2f3e]">Environment</SelectItem>
-                    <SelectItem value="collection" className="text-white hover:bg-[#2e2f3e]">Collection</SelectItem>
                     <SelectItem value="local" className="text-white hover:bg-[#2e2f3e]">Local</SelectItem>
                   </SelectContent>
                 </Select>
@@ -220,14 +349,16 @@ export const VariableInput = forwardRef<HTMLInputElement, VariableInputProps>(
                 variant="ghost"
                 onClick={() => setShowCreateDialog(false)}
                 className="hover:bg-[#2e2f3e]"
+                disabled={isCreating}
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleCreateVariable}
                 className="bg-violet-600 hover:bg-violet-700"
+                disabled={isCreating}
               >
-                Create Variable
+                {isCreating ? 'Creating...' : 'Create Variable'}
               </Button>
             </DialogFooter>
           </DialogContent>
