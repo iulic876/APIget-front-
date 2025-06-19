@@ -115,7 +115,7 @@ export const ChildrenLayout = () => {
           {/* Saved Requests */}
           {savedRequests.length > 0 && (
             <div className="w-full">
-              <h3 className="text-sm font-medium text-gray-300 mb-2">Saved Requests</h3>
+
               <div className="space-y-1">
                 {savedRequests.map((request) => (
                   <div
@@ -136,7 +136,7 @@ export const ChildrenLayout = () => {
                         <span className="text-sm truncate">{request.name}</span>
                       </div>
                       <div className="text-xs text-gray-400 truncate mt-1">
-                        {request.url}
+                        
                       </div>
                     </div>
                     <div className="relative">

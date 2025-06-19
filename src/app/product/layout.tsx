@@ -10,10 +10,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        
-      >
-        <MainRootLayout>{children}</MainRootLayout>
+      <body>
+        <div className="border-none">
+          <MainRootLayout>{children}</MainRootLayout>
+        </div>
       </body>
     </html>
   );

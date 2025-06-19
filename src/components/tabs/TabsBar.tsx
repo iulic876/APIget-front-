@@ -29,7 +29,7 @@ export const TabsBar = () => {
           {/* ❌ Close button */}
           <button
             onClick={() => closeTab(tab.id)}
-            className="text-neutral-600 hover:text-red-500"
+            className="text-neutral-600 hover:text-red-300"
           >
             ×
           </button>

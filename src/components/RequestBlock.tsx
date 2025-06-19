@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { Button } from "../components/ui/button";
 import { Input } from "./ui/input";
 import { useSavedRequests, SavedRequest } from "./context/SavedRequestsContext";
+import { MethodSelector } from "./collections/MethodSelector";
 
 interface RequestBlockProps {
   tabId: string;
@@ -106,7 +107,7 @@ export const RequestBlock = ({
             value={label}
             onChange={handleLabelChange}
           />
-          <Button 
+          <Button
             className="text-md m-2 bg-neutral-500 hover:bg-neutral-600"
             onClick={handleSaveRequest}
           >
@@ -114,16 +115,7 @@ export const RequestBlock = ({
           </Button>
         </div>
         <div className="flex items-center">
-          <select
-            className="px-4 py-2 rounded-md bg-[#21262d] text-white m-2"
-            value={method}
-            onChange={(e) => setMethod(e.target.value)}
-          >
-            <option>GET</option>
-            <option>POST</option>
-            <option>PUT</option>
-            <option>DELETE</option>
-          </select>
+          <MethodSelector value={method} onChange={setMethod} />
           <input
             className="w-full px-4 py-2 rounded-md bg-[#21262d] text-white"
             placeholder="Enter URL..."

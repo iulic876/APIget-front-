@@ -9,15 +9,17 @@ type RootLayoutProps = {
 
 export const RootLayout = ({ children }: RootLayoutProps) => {
   return (
-    <SavedRequestsProvider>
-      <TabsProvider>
-        <div className="flex h-screen z-0">
-          {/* Sidebar și content */}
-          <ChildrenLayout />
-          <main className="flex-1 z-10">{children}</main>
-        </div>
-      </TabsProvider>
-    </SavedRequestsProvider>
+    <div className="border-neutral-200 border-[0.5] rounded-2xl">
+      <SavedRequestsProvider>
+        <TabsProvider>
+          <div className="flex h-screen z-0">
+            {/* Sidebar și content */}
+            <ChildrenLayout />
+            <main className="flex-1 ">{children}</main>
+          </div>
+        </TabsProvider>
+      </SavedRequestsProvider>
+    </div>
   );
 };
 
