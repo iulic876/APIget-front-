@@ -82,6 +82,16 @@ export const ChildrenLayout = () => {
         event.preventDefault(); // Prevent default browser behavior
         handleNewRequest();
       }
+      
+      // Check for Command+C (Mac) or Ctrl+C (Windows/Linux) to create collection
+      if ((event.metaKey || event.ctrlKey) && event.key === 'c') {
+        // Only trigger if not in an input field to avoid interfering with copy functionality
+        const target = event.target as HTMLElement;
+        if (!target || (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA' && !target.isContentEditable)) {
+          event.preventDefault(); // Prevent default browser behavior
+          setIsCreateCollectionOpen(true);
+        }
+      }
     };
 
     document.addEventListener('keydown', handleKeyDown);
