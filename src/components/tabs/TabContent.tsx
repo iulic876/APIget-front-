@@ -1,6 +1,7 @@
 "use client";
 
 import { useTabs } from "./TabsContext";
+import {EmptyTab} from "./EmptyTab"
 
 export const TabContent = () => {
   const { tabs, activeTabId } = useTabs();
@@ -8,7 +9,9 @@ export const TabContent = () => {
   return (
     <div className="p-6 text-white">
       {tabs.length === 0 ? (
-        <div className="text-gray-500 italic">No tab open</div>
+        <div className="text-gray-500 flex items-center w-full h-full mt-20">
+          <EmptyTab/>
+        </div>
       ) : (
         tabs.map((tab) => (
           <div

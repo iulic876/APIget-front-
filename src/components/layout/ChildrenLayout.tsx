@@ -74,6 +74,23 @@ export const ChildrenLayout = () => {
     fetchCollections();
   }, []);
 
+  // Add keyboard shortcut listener for Command+N
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Check for Command+N (Mac) or Ctrl+N (Windows/Linux)
+      if ((event.metaKey || event.ctrlKey) && event.key === 'n') {
+        event.preventDefault(); // Prevent default browser behavior
+        handleNewRequest();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
