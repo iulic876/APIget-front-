@@ -14,13 +14,15 @@ interface RequestBlockProps {
   updateTabRequestLabel: (id: string, requestLabel: string) => void;
   requestLabel?: string;
   savedRequestId?: string;
+  onSave: (request: Omit<SavedRequest, 'id' | 'createdAt'>) => void;
 }
 
 export const RequestBlock = ({ 
   tabId, 
   updateTabRequestLabel, 
   requestLabel = "",
-  savedRequestId 
+  savedRequestId,
+  onSave
 }: RequestBlockProps) => {
   const [method, setMethod] = useState("GET");
   const [url, setUrl] = useState("");
@@ -29,7 +31,7 @@ export const RequestBlock = ({
   const [statusCode, setStatusCode] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [label, setLabel] = useState(requestLabel);
-  const { saveRequest, getRequestById } = useSavedRequests();
+  const { getRequestById } = useSavedRequests();
   const inputRef = useRef<HTMLInputElement>(null);
   const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUrl(e.target.value);
@@ -78,7 +80,7 @@ export const RequestBlock = ({
 
     const requestName = label.trim() || "Untitled Request";
     
-    saveRequest({
+    onSave({
       name: requestName,
       method,
       url,

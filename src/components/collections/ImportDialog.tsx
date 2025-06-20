@@ -1,5 +1,5 @@
 "use client";
-
+import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -8,142 +8,55 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { Textarea } from '@/components/ui/textarea';
 
 interface ImportModalProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (
-    requests: {
-      id: string;
-      method: string;
-      path: string;
-      summary: string;
-      tag: string;
-    }[]
-  ) => void;
-}
-const handleImport = ({ name, json }: { name: string; json: string }) => {
-  try {
-    const parsed = JSON.parse(json);
-
-    const endpoints = Object.entries(parsed.paths || {}).flatMap(
-      ([path, methods]) =>
-        Object.entries(methods as any).map(([method, details]: any) => ({
-          method: method.toUpperCase(),
-          path,
-          summary: details.summary || "",
-          tag: details.tags?.[0] || "Untagged",
-        }))
-    );
-
-    console.log("📦 Imported Collection Name:", name);
-    console.log("🔍 Extracted Endpoints:", endpoints);
-  } catch (err) {
-    console.error("❌ Invalid JSON:", err);
-  }
-};
-
-
-function parseOpenApiJson(raw: string) {
-  try {
-    const json = JSON.parse(raw);
-    if (!json.paths) return [];
-
-    const results = [];
-
-    for (const path in json.paths) {
-      const methods = json.paths[path];
-      for (const method in methods) {
-        const operation = methods[method];
-        results.push({
-          id: `${method.toUpperCase()} ${path}`,
-          method: method.toUpperCase(),
-          path,
-          summary: operation.summary || "",
-          tag: operation.tags?.[0] || "",
-        });
-      }
-    }
-
-    return results;
-  } catch (err) {
-    console.error("❌ Invalid OpenAPI JSON:", err);
-    return [];
-  }
+  onSubmit: (requests: any[]) => void;
 }
 
 export const ImportModal = ({ open, onClose, onSubmit }: ImportModalProps) => {
-  const [name, setName] = useState("");
-  const [json, setJson] = useState("");
+  const [jsonInput, setJsonInput] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = () => {
-    const parsed = parseOpenApiJson(json);
-    if (parsed.length === 0) {
-      alert("Invalid OpenAPI JSON or no endpoints found.");
-      return;
+  const handleImport = () => {
+    try {
+      const parsedJson = JSON.parse(jsonInput);
+      // We can add more validation here if needed
+      if (Array.isArray(parsedJson)) {
+        onSubmit(parsedJson);
+        onClose();
+      } else if (parsedJson.requests && Array.isArray(parsedJson.requests)) {
+        // Handle postman collection format
+        onSubmit(parsedJson.requests)
+      } else {
+        setError("Invalid format. Please provide a JSON array of requests.");
+      }
+    } catch (e) {
+      setError("Invalid JSON format.");
     }
-
-    console.log(`✅ Parsed ${parsed.length} endpoints from "${name}"`);
-    onSubmit(parsed);
-
-    setName("");
-    setJson("");
-    onClose();
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="bg-[#1a1b20] text-white border border-[#2e2f3e]">
+      <DialogContent className="bg-[#1a1b20] text-white border-[#2e2f3e]">
         <DialogHeader>
-          <DialogTitle className="text-lg font-semibold">
-            Import OpenAPI Collection
-          </DialogTitle>
+          <DialogTitle>Import Collection</DialogTitle>
         </DialogHeader>
-
-        <div className="space-y-4 py-2">
-          <div className="grid gap-2">
-            <Label htmlFor="name" className="text-sm">
-              Collection Name
-            </Label>
-            <Input
-              id="name"
-              placeholder="My Auth API"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="bg-[#16181d] text-white border border-[#2e2f3e]"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="json" className="text-sm">
-              Paste OpenAPI JSON
-            </Label>
-            <Textarea
-              id="json"
-              placeholder="{ ... }"
-              rows={10}
-              value={json}
-              onChange={(e) => setJson(e.target.value)}
-              className="bg-[#16181d] text-white border border-[#2e2f3e] font-mono text-sm"
-            />
-          </div>
+        <div className="py-4">
+          <p className="mb-2">Paste your collection JSON here:</p>
+          <Textarea
+            value={jsonInput}
+            onChange={(e) => setJsonInput(e.target.value)}
+            className="w-full bg-[#2e2f3e] border-none min-h-[200px]"
+            placeholder='[{"method": "GET", "url": "/api/users"}, ...]'
+          />
+          {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
         </div>
-
-        <DialogFooter className="flex justify-end gap-2">
-          <Button
-            variant="ghost"
-            onClick={onClose}
-            className="text-[#94a1b2] hover:text-white"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            className="bg-[#7f5af0] hover:bg-[#6b4de6] text-white"
-          >
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose} className="hover:bg-[#2e2f3e]">Cancel</Button>
+          <Button onClick={handleImport} className="bg-blue-600 hover:bg-blue-700">
             Import
           </Button>
         </DialogFooter>

@@ -14,6 +14,7 @@ export interface SavedRequest {
 interface SavedRequestsContextType {
   savedRequests: SavedRequest[];
   saveRequest: (request: Omit<SavedRequest, 'id' | 'createdAt'>) => void;
+  addRequest: (request: SavedRequest) => void;
   deleteRequest: (id: string) => void;
   getRequestById: (id: string) => SavedRequest | undefined;
 }
@@ -51,6 +52,10 @@ export const SavedRequestsProvider = ({ children }: { children: ReactNode }) => 
     },
   ]);
 
+  const addRequest = (request: SavedRequest) => {
+    setSavedRequests(prev => [...prev, request]);
+  };
+
   const saveRequest = (request: Omit<SavedRequest, 'id' | 'createdAt'>) => {
     const newRequest: SavedRequest = {
       ...request,
@@ -75,6 +80,7 @@ export const SavedRequestsProvider = ({ children }: { children: ReactNode }) => 
       value={{
         savedRequests,
         saveRequest,
+        addRequest,
         deleteRequest,
         getRequestById,
       }}

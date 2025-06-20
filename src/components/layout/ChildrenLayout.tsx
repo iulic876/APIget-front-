@@ -6,15 +6,56 @@ import { RequestBlock } from "../RequestBlock";
 import { Button } from "../ui/button";
 import { ImportModal } from "../collections/ImportDialog";
 import { useState, useEffect, useRef } from "react";
+import ApiService from "@/services/api";
+import { SaveRequestDialog } from "../collections/SaveRequestDialog";
+import { CreateCollectionDialog } from "../collections/CreateCollectionDialog";
 
 let newTabCounter = 1;
 
+interface Collection {
+  id: number;
+  name: string;
+}
+
 export const ChildrenLayout = () => {
   const { openTab, updateTabRequestLabel } = useTabs();
-  const { savedRequests, deleteRequest } = useSavedRequests();
+  const { savedRequests, deleteRequest, addRequest } = useSavedRequests();
   const [open, setOpen] = useState(false);
+  const [isCreateCollectionOpen, setIsCreateCollectionOpen] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [currentRequestData, setCurrentRequestData] = useState<any>(null);
+
+
+  const fetchCollections = async () => {
+    const userId = localStorage.getItem('user_id');
+    if (!userId) return;
+    try {
+      const response = await ApiService.get(`/collections?userId=${userId}`);
+      console.log('API response for collections:', response);
+      if (response.ok) {
+        const collectionsArray = response.data.collections || response.data;
+        if (Array.isArray(collectionsArray)) {
+          setCollections(collectionsArray);
+        } else {
+          console.error("Fetched data is not an array:", collectionsArray);
+          setCollections([]);
+        }
+      } else {
+        console.error("Failed to fetch collections", response.error);
+        setCollections([]);
+      }
+    } catch (error) {
+      console.error("Error fetching collections", error);
+      setCollections([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchCollections();
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -33,13 +74,52 @@ export const ChildrenLayout = () => {
     };
   }, [openDropdownId]);
 
+  const openSaveDialog = (requestData: any) => {
+    setCurrentRequestData(requestData);
+    setIsSaveModalOpen(true);
+  };
+
+  const handleSaveRequest = async (collectionId: number) => {
+    if (!currentRequestData) return;
+
+    const userId = localStorage.getItem('user_id');
+    if (!userId) {
+      console.error("User not found");
+      return;
+    }
+    
+    const payload = {
+      ...currentRequestData,
+      collection_id: collectionId
+    };
+
+    try {
+      const response = await ApiService.post(`/requests?userId=${userId}`, payload);
+      if (response.ok) {
+        console.log("Request saved successfully", response.data);
+        addRequest(response.data.request);
+        setIsSaveModalOpen(false);
+        setCurrentRequestData(null);
+      } else {
+        console.error("Failed to save request", response.error);
+      }
+    } catch (error) {
+      console.error("Error saving request", error);
+    }
+  };
+
   const handleNewRequest = () => {
     const newTabId = `new-tab-${newTabCounter++}`;
     openTab({
       id: newTabId,
       label: "Untitled Request",
       content: (
-        <RequestBlock tabId={newTabId} updateTabRequestLabel={updateTabRequestLabel} requestLabel="" />
+        <RequestBlock 
+          tabId={newTabId} 
+          updateTabRequestLabel={updateTabRequestLabel} 
+          requestLabel="" 
+          onSave={openSaveDialog} 
+        />
       ),
     });
   };
@@ -55,6 +135,7 @@ export const ChildrenLayout = () => {
           updateTabRequestLabel={updateTabRequestLabel} 
           requestLabel={savedRequest.name}
           savedRequestId={savedRequest.id}
+          onSave={openSaveDialog}
         />
       ),
     });
@@ -74,16 +155,15 @@ export const ChildrenLayout = () => {
     setOpen(false);
   };
 
-  const handleImport = (
-    requests: {
-      id: string;
-      method: string;
-      path: string;
-      summary: string;
-      tag: string;
-    }[]
-  ) => {
-    console.log("📦 Imported endpoints:", requests);
+  const handleImport = async (requests: any[]) => {
+    const userId = localStorage.getItem("user_id");
+    if (!userId) {
+      console.error("User not found");
+      return;
+    }
+    console.log("📦 Importing endpoints for user:", userId, requests);
+    // Here you would typically make an API call to a bulk import endpoint
+    // For now, we just log it.
   };
 
   return (
@@ -105,11 +185,36 @@ export const ChildrenLayout = () => {
               + New
             </button>
             <Button 
+              onClick={() => setIsCreateCollectionOpen(true)}
+              className="text-sm bg-neutral-600 hover:bg-neutral-700"
+            >
+              New Collection
+            </Button>
+            {/* <Button 
               onClick={() => setOpen(true)}
               className="text-sm bg-neutral-600 hover:bg-neutral-700"
             >
-              Import Collection
-            </Button>
+              Import
+            </Button> */}
+          </div>
+
+          {/* Collections */}
+          <div className="w-full mt-4">
+            <h3 className="text-md font-semibold mb-2">Collections</h3>
+            {collections.length > 0 ? (
+              <div className="space-y-1">
+                {collections.map((collection) => (
+                  <div
+                    key={collection.id}
+                    className="flex items-center justify-between p-2 rounded-md bg-[#21262d] hover:bg-[#2a2f38] cursor-pointer group"
+                  >
+                    <span className="text-sm truncate">{collection.name}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 pl-2">No collections yet.</p>
+            )}
           </div>
 
           {/* Saved Requests */}
@@ -173,6 +278,17 @@ export const ChildrenLayout = () => {
           open={open}
           onClose={handleClose}
           onSubmit={handleImport}
+        />
+        <SaveRequestDialog 
+          open={isSaveModalOpen}
+          onClose={() => setIsSaveModalOpen(false)}
+          collections={collections}
+          onSave={handleSaveRequest}
+        />
+        <CreateCollectionDialog
+          open={isCreateCollectionOpen}
+          onClose={() => setIsCreateCollectionOpen(false)}
+          onCollectionCreated={fetchCollections}
         />
       </aside>
     </div>
