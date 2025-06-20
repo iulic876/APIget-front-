@@ -1,7 +1,7 @@
 'use client'
 import { useTabs } from "../tabs/TabsContext";
 import { useSavedRequests } from "../context/SavedRequestsContext";
-import { Book, MoreVertical } from "lucide-react";
+import { Book, MoreVertical, ChevronRight, ChevronDown } from "lucide-react";
 import { RequestBlock } from "../RequestBlock";
 import { Button } from "../ui/button";
 import { ImportModal } from "../collections/ImportDialog";
@@ -27,6 +27,7 @@ export const ChildrenLayout = () => {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [currentRequestData, setCurrentRequestData] = useState<any>(null);
+  const [expandedCollections, setExpandedCollections] = useState<Set<number>>(new Set());
 
 
   const fetchCollections = async () => {
@@ -51,6 +52,18 @@ export const ChildrenLayout = () => {
       console.error("Error fetching collections", error);
       setCollections([]);
     }
+  };
+
+  const toggleCollection = (collectionId: number) => {
+    setExpandedCollections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(collectionId)) {
+        newSet.delete(collectionId);
+      } else {
+        newSet.add(collectionId);
+      }
+      return newSet;
+    });
   };
 
   useEffect(() => {
@@ -204,11 +217,64 @@ export const ChildrenLayout = () => {
             {collections.length > 0 ? (
               <div className="space-y-1">
                 {collections.map((collection) => (
-                  <div
-                    key={collection.id}
-                    className="flex items-center justify-between p-2 rounded-md bg-[#21262d] hover:bg-[#2a2f38] cursor-pointer group"
-                  >
-                    <span className="text-sm truncate">{collection.name}</span>
+                  <div key={collection.id}>
+                    <div
+                      onClick={() => toggleCollection(collection.id)}
+                      className="flex items-center justify-between p-2 rounded-md bg-[#21262d] hover:bg-[#2a2f38] cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-2">
+                        {expandedCollections.has(collection.id) ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                        <span className="text-sm truncate">{collection.name}</span>
+                      </div>
+                    </div>
+                    {expandedCollections.has(collection.id) && (
+                      <div className="pl-6 pt-1 space-y-1">
+                        {savedRequests
+                          .filter(req => req.collection_id === collection.id)
+                          .map(request => (
+                            <div
+                              key={request.id}
+                              onClick={() => handleOpenSavedRequest(request)}
+                              className="flex items-center justify-between p-2 rounded-md bg-[#2a2f38] hover:bg-[#3a3f48] cursor-pointer group relative"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-xs px-1 py-0.5 rounded font-mono ${
+                                    request.method === 'GET' ? 'bg-green-600' :
+                                    request.method === 'POST' ? 'bg-blue-600' :
+                                    request.method === 'PUT' ? 'bg-yellow-600' :
+                                    'bg-red-600'
+                                  }`}>
+                                    {request.method}
+                                  </span>
+                                  <span className="text-sm truncate">{request.name}</span>
+                                </div>
+                              </div>
+                              <div className="relative">
+                                <button
+                                  onClick={(e) => toggleDropdown(e, request.id)}
+                                  className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white transition-opacity p-1"
+                                >
+                                  <MoreVertical size={14} />
+                                </button>
+                                {openDropdownId === request.id && (
+                                  <div className="absolute right-0 top-6 bg-[#1a1d23] border border-[#2e2f3e] rounded-md shadow-lg z-10 min-w-[120px]">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteRequest(request.id);
+                                      }}
+                                      className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-[#2a2f38] hover:text-red-300 transition-colors"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -217,61 +283,8 @@ export const ChildrenLayout = () => {
             )}
           </div>
 
-          {/* Saved Requests */}
-          {savedRequests.length > 0 && (
-            <div className="w-full">
-
-              <div className="space-y-1">
-                {savedRequests.map((request) => (
-                  <div
-                    key={request.id}
-                    onClick={() => handleOpenSavedRequest(request)}
-                    className="flex items-center justify-between p-2 rounded-md bg-[#21262d] hover:bg-[#2a2f38] cursor-pointer group relative"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs px-1 py-0.5 rounded font-mono ${
-                          request.method === 'GET' ? 'bg-green-600' :
-                          request.method === 'POST' ? 'bg-blue-600' :
-                          request.method === 'PUT' ? 'bg-yellow-600' :
-                          'bg-red-600'
-                        }`}>
-                          {request.method}
-                        </span>
-                        <span className="text-sm truncate">{request.name}</span>
-                      </div>
-                      <div className="text-xs text-gray-400 truncate mt-1">
-                        
-                      </div>
-                    </div>
-                    <div className="relative">
-                      <button
-                        onClick={(e) => toggleDropdown(e, request.id)}
-                        className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white transition-opacity p-1"
-                      >
-                        <MoreVertical size={14} />
-                      </button>
-                      
-                      {/* Dropdown Menu */}
-                      {openDropdownId === request.id && (
-                        <div className="absolute right-0 top-6 bg-[#1a1d23] border border-[#2e2f3e] rounded-md shadow-lg z-10 min-w-[120px]">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteRequest(request.id);
-                            }}
-                            className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-[#2a2f38] hover:text-red-300 transition-colors"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Saved Requests - This can be removed if all requests are shown under collections */}
+          
         </div>
 
         <ImportModal

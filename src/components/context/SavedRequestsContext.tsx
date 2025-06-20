@@ -8,6 +8,7 @@ export interface SavedRequest {
   method: string;
   url: string;
   body?: string;
+  collection_id?: number;
   createdAt: Date;
 }
 
@@ -37,6 +38,7 @@ export const SavedRequestsProvider = ({ children }: { children: ReactNode }) => 
       method: "GET",
       url: "https://jsonplaceholder.typicode.com/users",
       createdAt: new Date(),
+      collection_id: 1,
     },
     {
       id: "mock-2", 
@@ -49,6 +51,7 @@ export const SavedRequestsProvider = ({ children }: { children: ReactNode }) => 
         userId: 1
       }, null, 2),
       createdAt: new Date(),
+      collection_id: 1,
     },
   ]);
 
