@@ -8,6 +8,7 @@ import {
   ChangeEvent,
   RefObject,
   useCallback,
+  useImperativeHandle,
 } from "react";
 import { cn } from "@/lib/utils";
 import {
@@ -27,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import ApiService from "@/services/api";
+import { EditableDiv } from "./EditableDiv";
 
 interface WorkspaceVariable {
   id: number;
@@ -49,15 +51,15 @@ interface Variable {
 
 type VariableInputProps = {
   value: string;
-  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  onChange: (e: ChangeEvent<HTMLInputElement> | { target: { value: string } }) => void; // Allow for custom event
   placeholder?: string;
   className?: string;
 };
 
-export const VariableInput = forwardRef<HTMLInputElement, VariableInputProps>(
+export const VariableInput = forwardRef<HTMLDivElement, VariableInputProps>(
   ({ value, onChange, placeholder, className }, ref) => {
-    const localRef = useRef<HTMLInputElement>(null);
-    const inputRef = (ref as RefObject<HTMLInputElement>) || localRef;
+    const localRef = useRef<HTMLDivElement>(null);
+    const inputRef = (ref as RefObject<HTMLDivElement>) || localRef;
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [variables, setVariables] = useState<WorkspaceVariable[]>([]);
     const [filtered, setFiltered] = useState<WorkspaceVariable[]>([]);
@@ -83,19 +85,14 @@ export const VariableInput = forwardRef<HTMLInputElement, VariableInputProps>(
         }
 
         const response = await ApiService.get(`/variables?userId=${parseInt(userId)}`);
-        console.log('Raw API response:', response);
         
         if (response.ok) {
-          // The response structure is { variables: [...] }
           const variablesArray = response.data?.variables || [];
-          console.log('Variables array:', variablesArray);
           setVariables(variablesArray);
         } else {
-          console.error('Invalid variables response:', response);
           setVariables([]);
         }
       } catch (err) {
-        console.error('Error fetching variables:', err);
         setVariables([]);
         setError('Failed to load variables');
       } finally {
@@ -107,24 +104,35 @@ export const VariableInput = forwardRef<HTMLInputElement, VariableInputProps>(
       fetchVariables();
     }, [fetchVariables]);
 
-    const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const handleEditableDivChange = (newValue: string) => {
+      // Simulate a ChangeEvent to maintain compatibility with RequestBlock
+      const event = {
+        target: { value: newValue },
+      } as ChangeEvent<HTMLInputElement>;
+      handleInputChange(event);
+    };
+
+    const handleInputChange = (e: ChangeEvent<HTMLInputElement> | {target: { value: string }}) => {
       const newValue = e.target.value;
       onChange(e);
 
-      if (newValue.includes("{{")) {
-        const match = newValue.match(/\{\{([^}]*)/);
-        const query = match ? match[1].toLowerCase() : "";
+      const match = newValue.match(/\{\{([^}]+)$/);
+      if (match) {
+        const query = match[1];
         setCurrentQuery(query);
-        console.log('Current variables state:', variables);
-        console.log('Current query:', query);
+
+        const dynamicVars: WorkspaceVariable[] = [
+          { variable_key: '$randomInt', id: -1, value: '', scope: 'global' as VariableScope, workspace_id: 0 },
+          { variable_key: '$timestamp', id: -2, value: '', scope: 'global' as VariableScope, workspace_id: 0 },
+          { variable_key: '$guid', id: -3, value: '', scope: 'global' as VariableScope, workspace_id: 0 },
+        ];
         
-        // Make sure we're working with the array of variables
-        const varsArray = Array.isArray(variables) ? variables : [];
-        const filteredVars = varsArray.filter((v) => 
-          v?.variable_key?.toLowerCase().includes(query)
+        const allVars = [...variables, ...dynamicVars];
+
+        const filteredVars = allVars.filter((v) =>
+          v.variable_key.toLowerCase().includes(query.toLowerCase())
         );
         
-        console.log('Filtered variables:', filteredVars);
         setFiltered(filteredVars);
         setShowSuggestions(true);
         if (query) {
@@ -137,16 +145,6 @@ export const VariableInput = forwardRef<HTMLInputElement, VariableInputProps>(
       }
     };
 
-    // Debug effect to monitor variables state
-    useEffect(() => {
-      console.log('Variables state updated:', variables);
-    }, [variables]);
-
-    // Debug effect to monitor filtered state
-    useEffect(() => {
-      console.log('Filtered state updated:', filtered);
-    }, [filtered]);
-
     const insertVariable = (variableKey: string) => {
       const el = inputRef.current;
       if (!el) return;
@@ -154,29 +152,27 @@ export const VariableInput = forwardRef<HTMLInputElement, VariableInputProps>(
       setShowSuggestions(false);
       setFiltered([]);
 
-      const start = el.selectionStart ?? 0;
-      const end = el.selectionEnd ?? 0;
-      const textBeforeCursor = value.slice(0, start);
-      const textAfterCursor = value.slice(end);
-      
-      const lastOpenBraceIndex = textBeforeCursor.lastIndexOf("{{");
+      const lastOpenBraceIndex = value.lastIndexOf("{{");
       if (lastOpenBraceIndex === -1) return;
       
-      const newValue = textBeforeCursor.slice(0, lastOpenBraceIndex) + 
-        `{{${variableKey}}}` + 
-        textAfterCursor;
+      const newValue = value.slice(0, lastOpenBraceIndex) + 
+        `{{${variableKey}}}`
 
       const event = {
-        ...new Event("change", { bubbles: true }),
         target: { value: newValue },
-      } as unknown as ChangeEvent<HTMLInputElement>;
-
+      } as ChangeEvent<HTMLInputElement>;
+      
       onChange(event);
 
       requestAnimationFrame(() => {
-        const newCursorPos = lastOpenBraceIndex + variableKey.length + 4;
         el.focus();
-        el.setSelectionRange(newCursorPos, newCursorPos);
+        // Move cursor to the end
+        const range = document.createRange();
+        const sel = window.getSelection();
+        range.selectNodeContents(el);
+        range.collapse(false); // false for end
+        sel?.removeAllRanges();
+        sel?.addRange(range);
       });
     };
 
@@ -213,22 +209,18 @@ export const VariableInput = forwardRef<HTMLInputElement, VariableInputProps>(
         
         if (response.ok && response.data) {
           setShowCreateDialog(false);
-          // Reset form
           setNewVariable({
             key: '',
             value: '',
             scope: 'workspace',
             workspace_id: 1
           });
-          // Insert the variable
           insertVariable(newVariable.key);
-          // Refetch variables to get the updated list
           await fetchVariables();
         } else {
           setError(response.error || 'Failed to create variable');
         }
       } catch (err) {
-        console.error('Error creating variable:', err);
         setError('An error occurred while creating the variable');
       } finally {
         setIsCreating(false);
@@ -237,128 +229,82 @@ export const VariableInput = forwardRef<HTMLInputElement, VariableInputProps>(
 
     return (
       <div className="relative w-full">
-        <input
+        <EditableDiv
           ref={inputRef}
-          type="text"
           value={value}
-          onChange={handleInputChange}
+          onChange={handleEditableDivChange}
+          onKeyDown={() => {}}
           placeholder={placeholder}
           className={cn(
-            "rounded-md bg-[#1a1b20] text-white border border-[#2e2f3e] px-4 py-2",
-            className
+            "rounded-md bg-[#1a1b20] text-white border border-[#2e2f3e] px-4 py-2 min-h-[40px] focus:outline-none focus:ring-2 focus:ring-blue-500",
+            className,
+            "empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400"
           )}
         />
         {showSuggestions && (
-          <ul className="absolute left-0 top-full mt-1 z-50 rounded-md bg-[#1a1b20] border border-[#2e2f3e] shadow-lg text-white text-sm max-h-40 overflow-y-auto min-w-[200px]">
-            {isLoading && (
-              <li className="px-3 py-2 text-center text-gray-400">Loading variables...</li>
-            )}
-            {error && (
-              <li className="px-3 py-2 text-center text-red-400">{error}</li>
-            )}
-            {!isLoading && !error && filtered.length === 0 && variables.length > 0 && (
-              <li className="px-3 py-2 text-center text-gray-400">No matching variables</li>
-            )}
-            {filtered.map((v) => (
-              <li
-                key={v.id}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleSuggestionClick(v);
-                }}
-                className="px-3 py-2 hover:bg-[#2e2f3e] cursor-pointer"
-              >
-                <div className="border-[0.5] border-violet-300 mx-3 flex justify-center rounded-md bg-violet-500">
+          <div className="absolute z-10 w-full mt-1 bg-[#1a1b20] border border-[#2e2f3e] rounded-md shadow-lg">
+            {isLoading ? (
+              <div className="p-2 text-white">Loading...</div>
+            ) : filtered.length > 0 ? (
+              filtered.map((v) => (
+                <div
+                  key={v.id}
+                  className="p-2 text-white cursor-pointer hover:bg-[#2e2f3e]"
+                  onClick={() => handleSuggestionClick(v)}
+                >
                   {v.variable_key}
                 </div>
-              </li>
-            ))}
-            <li
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setShowCreateDialog(true);
-                setNewVariable(prev => ({
-                  ...prev,
-                  key: currentQuery || '',
-                  value: ''  // Reset value when opening dialog
-                }));
-              }}
-              className={cn(
-                "px-3 py-2 hover:bg-[#2e2f3e] cursor-pointer",
-                (filtered.length > 0 || isLoading || error) && "border-t border-[#2e2f3e]"
-              )}
-            >
-              <div className="flex items-center justify-center gap-2 text-violet-400">
-                <span>+ Create variable "{currentQuery || 'new'}"</span>
+              ))
+            ) : (
+              <div className="p-2 text-white">
+                No results.{" "}
+                <Button
+                  variant="link"
+                  className="p-0 text-blue-400"
+                  onClick={() => setShowCreateDialog(true)}
+                >
+                  Create new variable?
+                </Button>
               </div>
-            </li>
-          </ul>
+            )}
+          </div>
         )}
-
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-          <DialogContent className="bg-[#1a1b20] text-white border-[#2e2f3e]" showCloseButton>
+          <DialogContent className="bg-[#1a1b20] text-white border-[#2e2f3e]">
             <DialogHeader>
               <DialogTitle>Create New Variable</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              {error && (
-                <div className="text-red-400 text-sm p-2 bg-red-400/10 rounded-md">
-                  {error}
-                </div>
-              )}
-              <div className="space-y-2">
-                <label className="text-sm">Variable Name</label>
-                <Input
-                  value={newVariable.key}
-                  onChange={(e) => setNewVariable(prev => ({ ...prev, key: e.target.value }))}
-                  className="bg-[#2e2f3e] border-[#3e3f4e]"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm">Value</label>
-                <Input
-                  value={newVariable.value}
-                  onChange={(e) => setNewVariable(prev => ({ ...prev, value: e.target.value }))}
-                  className="bg-[#2e2f3e] border-[#3e3f4e]"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm">Scope</label>
-                <Select
-                  value={newVariable.scope}
-                  onValueChange={(value: VariableScope) => 
-                    setNewVariable(prev => ({ ...prev, scope: value }))
-                  }
-                >
-                  <SelectTrigger className="bg-[#2e2f3e] border-[#3e3f4e] text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#1a1b20] border-[#2e2f3e]">
-                    <SelectItem value="global" className="text-white hover:bg-[#2e2f3e]">Global</SelectItem>
-                    <SelectItem value="workspace" className="text-white hover:bg-[#2e2f3e]">Workspace</SelectItem>
-                    <SelectItem value="environment" className="text-white hover:bg-[#2e2f3e]">Environment</SelectItem>
-                    <SelectItem value="local" className="text-white hover:bg-[#2e2f3e]">Local</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="grid gap-4 py-4">
+              <Input
+                placeholder="Variable Name"
+                value={newVariable.key}
+                onChange={(e) => setNewVariable({ ...newVariable, key: e.target.value })}
+                className="bg-[#2e2f3e] border-none"
+              />
+              <Input
+                placeholder="Variable Value"
+                value={newVariable.value}
+                onChange={(e) => setNewVariable({ ...newVariable, value: e.target.value })}
+                className="bg-[#2e2f3e] border-none"
+              />
+              <Select
+                value={newVariable.scope}
+                onValueChange={(scope: VariableScope) => setNewVariable({ ...newVariable, scope })}
+              >
+                <SelectTrigger className="bg-[#2e2f3e] border-none">
+                  <SelectValue placeholder="Scope" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1a1b20] text-white border-[#2e2f3e]">
+                  <SelectItem value="workspace">Workspace</SelectItem>
+                  <SelectItem value="environment">Environment</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+            {error && <p className="text-red-500">{error}</p>}
             <DialogFooter>
-              <Button
-                variant="ghost"
-                onClick={() => setShowCreateDialog(false)}
-                className="hover:bg-[#2e2f3e]"
-                disabled={isCreating}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleCreateVariable}
-                className="bg-violet-600 hover:bg-violet-700"
-                disabled={isCreating}
-              >
-                {isCreating ? 'Creating...' : 'Create Variable'}
+               <Button variant="ghost" onClick={() => setShowCreateDialog(false)} className="hover:bg-[#2e2f3e]">Cancel</Button>
+              <Button onClick={handleCreateVariable} disabled={isCreating} className="bg-blue-600 hover:bg-blue-700">
+                {isCreating ? 'Creating...' : 'Create'}
               </Button>
             </DialogFooter>
           </DialogContent>

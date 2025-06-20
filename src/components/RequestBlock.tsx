@@ -7,23 +7,23 @@ import { Input } from "./ui/input";
 import { useSavedRequests, SavedRequest } from "./context/SavedRequestsContext";
 import { MethodSelector } from "./collections/MethodSelector";
 import { VariableInput } from "./request/components/VariableInput";
+import ApiService from "@/services/api";
 
+interface WorkspaceVariable {
+  id: number;
+  variable_key: string;
+  value: string;
+}
 
 interface RequestBlockProps {
   tabId: string;
-  updateTabRequestLabel: (id: string, requestLabel: string) => void;
-  requestLabel?: string;
-  savedRequestId?: string;
-  onSave: (request: Omit<SavedRequest, 'id' | 'createdAt'>) => void;
+  updateTabRequestLabel: (tabId: string, newLabel: string) => void;
+  requestLabel: string;
+  savedRequestId?: number;
+  onSave: (requestData: Omit<SavedRequest, 'id' | 'createdAt'>) => void;
 }
 
-export const RequestBlock = ({ 
-  tabId, 
-  updateTabRequestLabel, 
-  requestLabel = "",
-  savedRequestId,
-  onSave
-}: RequestBlockProps) => {
+export const RequestBlock = ({ tabId, updateTabRequestLabel, requestLabel, savedRequestId, onSave }: RequestBlockProps) => {
   const [method, setMethod] = useState("GET");
   const [url, setUrl] = useState("");
   const [body, setBody] = useState("");
@@ -33,12 +33,7 @@ export const RequestBlock = ({
   const [label, setLabel] = useState(requestLabel);
   const { getRequestById } = useSavedRequests();
   const inputRef = useRef<HTMLInputElement>(null);
-  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setUrl(e.target.value);
-  };
 
-
-  // Load saved request data if savedRequestId is provided
   useEffect(() => {
     if (savedRequestId) {
       const savedRequest = getRequestById(savedRequestId);
@@ -51,22 +46,67 @@ export const RequestBlock = ({
       }
     }
   }, [savedRequestId, getRequestById, updateTabRequestLabel, tabId]);
+  
+  const substituteVariables = (text: string, currentVariables: WorkspaceVariable[]): string => {
+    if (!text) return "";
+    
+    let substitutedText = text;
+
+    // Substitute static variables first
+    if (currentVariables.length) {
+      currentVariables.forEach(variable => {
+        const regex = new RegExp(`\\{\\{${variable.variable_key}\\}\\}`, 'g');
+        substitutedText = substitutedText.replace(regex, variable.value);
+      });
+    }
+
+    // Substitute dynamic variables
+    substitutedText = substitutedText.replace(/\{\{\$randomInt\}\}/g, String(Math.floor(Math.random() * 1000)));
+    substitutedText = substitutedText.replace(/\{\{\$timestamp\}\}/g, String(Date.now()));
+    substitutedText = substitutedText.replace(/\{\{\$guid\}\}/g, () =>
+      'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      })
+    );
+
+    return substitutedText;
+  };
 
   const handleSend = async () => {
+    setLoading(true);
+    setStatusCode(null);
+    setResponse(null);
+
     try {
-      setLoading(true);
-      setStatusCode(null);
-      const res = await fetch(url, {
+      // Fetch the latest variables right before sending the request
+      const userId = localStorage.getItem('user_id');
+      if (!userId) {
+        throw new Error("User ID not found");
+      }
+      
+      let currentVariables: WorkspaceVariable[] = [];
+      const response = await ApiService.get(`/variables?userId=${userId}`);
+      if (response.ok) {
+          currentVariables = response.data?.variables || [];
+      } else {
+          console.error('Failed to fetch variables:', response);
+      }
+
+      const substitutedUrl = substituteVariables(url, currentVariables);
+      const substitutedBody = substituteVariables(body, currentVariables);
+
+      const res = await fetch(substitutedUrl, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: method !== "GET" && method !== "DELETE" ? body : undefined,
+        body: method !== "GET" && method !== "DELETE" ? substitutedBody : undefined,
       });
 
       setStatusCode(res.status);
       const text = await res.text();
       setResponse(text);
-    } catch (error) {
-      setResponse("❌ Error: " + (error as Error).message);
+    } catch (error: any) {
+      setResponse("❌ Error: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -129,7 +169,7 @@ export const RequestBlock = ({
             ref={inputRef}
             placeholder="Enter request URL"
             value={url}
-            onChange={handleUrlChange}
+            onChange={(e) => setUrl(e.target.value)}
             className="w-full bg-[#1a1b20] text-white border-[#2e2f3e]"
           />
           <Button

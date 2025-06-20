@@ -1,6 +1,6 @@
 'use client'
 import { useTabs } from "../tabs/TabsContext";
-import { useSavedRequests } from "../context/SavedRequestsContext";
+import { useSavedRequests, SavedRequest } from "../context/SavedRequestsContext";
 import { Book, MoreVertical, ChevronRight, ChevronDown } from "lucide-react";
 import { RequestBlock } from "../RequestBlock";
 import { Button } from "../ui/button";
@@ -15,14 +15,15 @@ let newTabCounter = 1;
 interface Collection {
   id: number;
   name: string;
+  requests: SavedRequest[];
 }
 
 export const ChildrenLayout = () => {
   const { openTab, updateTabRequestLabel } = useTabs();
-  const { savedRequests, deleteRequest, addRequest } = useSavedRequests();
+  const { savedRequests, deleteRequest, addRequest, setRequests } = useSavedRequests();
   const [open, setOpen] = useState(false);
   const [isCreateCollectionOpen, setIsCreateCollectionOpen] = useState(false);
-  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
@@ -35,22 +36,25 @@ export const ChildrenLayout = () => {
     if (!userId) return;
     try {
       const response = await ApiService.get(`/collections?userId=${userId}`);
-      console.log('API response for collections:', response);
       if (response.ok) {
         const collectionsArray = response.data.collections || response.data;
         if (Array.isArray(collectionsArray)) {
           setCollections(collectionsArray);
+          // Now, extract all requests from all collections and update the SavedRequestsContext
+          const allRequests = collectionsArray.flatMap(collection => collection.requests || []);
+          setRequests(allRequests);
         } else {
-          console.error("Fetched data is not an array:", collectionsArray);
           setCollections([]);
+          setRequests([]);
         }
       } else {
-        console.error("Failed to fetch collections", response.error);
         setCollections([]);
+        setRequests([]);
       }
     } catch (error) {
       console.error("Error fetching collections", error);
       setCollections([]);
+      setRequests([]);
     }
   };
 
@@ -154,12 +158,12 @@ export const ChildrenLayout = () => {
     });
   };
 
-  const handleDeleteRequest = (id: string) => {
+  const handleDeleteRequest = (id: number) => {
     deleteRequest(id);
     setOpenDropdownId(null);
   };
 
-  const toggleDropdown = (e: React.MouseEvent, id: string) => {
+  const toggleDropdown = (e: React.MouseEvent, id: number) => {
     e.stopPropagation();
     setOpenDropdownId(openDropdownId === id ? null : id);
   };
@@ -229,8 +233,7 @@ export const ChildrenLayout = () => {
                     </div>
                     {expandedCollections.has(collection.id) && (
                       <div className="pl-6 pt-1 space-y-1">
-                        {savedRequests
-                          .filter(req => req.collection_id === collection.id)
+                        {(collection.requests || [])
                           .map(request => (
                             <div
                               key={request.id}
@@ -282,9 +285,6 @@ export const ChildrenLayout = () => {
               <p className="text-sm text-gray-400 pl-2">No collections yet.</p>
             )}
           </div>
-
-          {/* Saved Requests - This can be removed if all requests are shown under collections */}
-          
         </div>
 
         <ImportModal

@@ -3,21 +3,21 @@
 import { createContext, useContext, useState, ReactNode } from "react";
 
 export interface SavedRequest {
-  id: string;
+  id: number;
   name: string;
   method: string;
   url: string;
-  body?: string;
+  body?: any; // Can be object or string
   collection_id?: number;
-  createdAt: Date;
+  createdAt: string; // API sends string
 }
 
 interface SavedRequestsContextType {
   savedRequests: SavedRequest[];
-  saveRequest: (request: Omit<SavedRequest, 'id' | 'createdAt'>) => void;
+  setRequests: (requests: SavedRequest[]) => void;
   addRequest: (request: SavedRequest) => void;
-  deleteRequest: (id: string) => void;
-  getRequestById: (id: string) => SavedRequest | undefined;
+  deleteRequest: (id: number) => void;
+  getRequestById: (id: number) => SavedRequest | undefined;
 }
 
 const SavedRequestsContext = createContext<SavedRequestsContextType | undefined>(undefined);
@@ -31,50 +31,29 @@ export const useSavedRequests = () => {
 };
 
 export const SavedRequestsProvider = ({ children }: { children: ReactNode }) => {
-  const [savedRequests, setSavedRequests] = useState<SavedRequest[]>([
-    {
-      id: "mock-1",
-      name: "Get Users",
-      method: "GET",
-      url: "https://jsonplaceholder.typicode.com/users",
-      createdAt: new Date(),
-      collection_id: 1,
-    },
-    {
-      id: "mock-2", 
-      name: "Create Post",
-      method: "POST",
-      url: "https://jsonplaceholder.typicode.com/posts",
-      body: JSON.stringify({
-        title: "Sample Post",
-        body: "This is a sample post body",
-        userId: 1
-      }, null, 2),
-      createdAt: new Date(),
-      collection_id: 1,
-    },
-  ]);
+  const [savedRequests, setSavedRequests] = useState<SavedRequest[]>([]);
+
+  const setRequests = (requests: SavedRequest[]) => {
+    const formattedRequests = requests.map(r => ({
+      ...r,
+      body: r.body && typeof r.body === 'object' ? JSON.stringify(r.body, null, 2) : r.body,
+    }));
+    setSavedRequests(formattedRequests);
+  };
 
   const addRequest = (request: SavedRequest) => {
-    setSavedRequests(prev => [...prev, request]);
-  };
-
-  const saveRequest = (request: Omit<SavedRequest, 'id' | 'createdAt'>) => {
-    const newRequest: SavedRequest = {
+    const formattedRequest = {
       ...request,
-      id: `saved-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      createdAt: new Date(),
+      body: request.body && typeof request.body === 'object' ? JSON.stringify(request.body, null, 2) : request.body,
     };
-    
-    setSavedRequests(prev => [...prev, newRequest]);
-    console.log("💾 Saved request:", newRequest);
+    setSavedRequests(prev => [...prev, formattedRequest]);
   };
 
-  const deleteRequest = (id: string) => {
+  const deleteRequest = (id: number) => {
     setSavedRequests(prev => prev.filter(req => req.id !== id));
   };
 
-  const getRequestById = (id: string) => {
+  const getRequestById = (id: number) => {
     return savedRequests.find(req => req.id === id);
   };
 
@@ -82,7 +61,7 @@ export const SavedRequestsProvider = ({ children }: { children: ReactNode }) => 
     <SavedRequestsContext.Provider
       value={{
         savedRequests,
-        saveRequest,
+        setRequests,
         addRequest,
         deleteRequest,
         getRequestById,
