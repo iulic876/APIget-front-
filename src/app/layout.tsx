@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AppWrapper } from "@/components/AppWrapper";
 import { AuthLayout } from "@/components/layout/AuthLayout";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -19,6 +20,7 @@ export default function RootLayout({
         <AppWrapper>
           <AuthLayout>
             {children}
+            <Analytics />
           </AuthLayout>
         </AppWrapper>
       </body>
