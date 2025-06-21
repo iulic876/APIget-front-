@@ -3,6 +3,7 @@ import "./globals.css";
 import { AppWrapper } from "@/components/AppWrapper";
 import { AuthLayout } from "@/components/layout/AuthLayout";
 import { Analytics } from "@vercel/analytics/next";
+import Script from "next/script";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -23,6 +24,12 @@ export default function RootLayout({
             <Analytics />
           </AuthLayout>
         </AppWrapper>
+        <Script
+          async
+          id="toolbar-script"
+          data-toolbar-api-key="2a63fcc4-b17d-4701-adb9-83fedca0f0cd"
+          src="https://get.usetool.bar/embedded-app.js"
+        />
       </body>
     </html>
   );
