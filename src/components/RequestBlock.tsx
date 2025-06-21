@@ -20,7 +20,7 @@ interface RequestBlockProps {
   updateTabRequestLabel: (tabId: string, newLabel: string) => void;
   requestLabel: string;
   savedRequestId?: number;
-  onSave: (requestData: Omit<SavedRequest, 'id' | 'createdAt'>) => void;
+  onSave: (requestData: Omit<SavedRequest, 'id' | 'createdAt'> & { savedRequestId?: number }) => void;
 }
 
 export const RequestBlock = ({ tabId, updateTabRequestLabel, requestLabel, savedRequestId, onSave }: RequestBlockProps) => {
