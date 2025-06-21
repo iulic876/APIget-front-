@@ -16,6 +16,7 @@ interface SavedRequestsContextType {
   savedRequests: SavedRequest[];
   setRequests: (requests: SavedRequest[]) => void;
   addRequest: (request: SavedRequest) => void;
+  updateRequest: (id: number, updatedRequest: Partial<SavedRequest>) => void;
   deleteRequest: (id: number) => void;
   getRequestById: (id: number) => SavedRequest | undefined;
 }
@@ -49,6 +50,14 @@ export const SavedRequestsProvider = ({ children }: { children: ReactNode }) => 
     setSavedRequests(prev => [...prev, formattedRequest]);
   };
 
+  const updateRequest = (id: number, updatedRequest: Partial<SavedRequest>) => {
+    setSavedRequests(prev =>
+      prev.map(req =>
+        req.id === id ? { ...req, ...updatedRequest } : req
+      )
+    );
+  };
+
   const deleteRequest = (id: number) => {
     setSavedRequests(prev => prev.filter(req => req.id !== id));
   };
@@ -63,6 +72,7 @@ export const SavedRequestsProvider = ({ children }: { children: ReactNode }) => 
         savedRequests,
         setRequests,
         addRequest,
+        updateRequest,
         deleteRequest,
         getRequestById,
       }}

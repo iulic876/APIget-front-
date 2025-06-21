@@ -11,6 +11,7 @@ import { SaveRequestDialog } from "../collections/SaveRequestDialog";
 import { CreateCollectionDialog } from "../collections/CreateCollectionDialog";
 import { SearchComponent } from "../SearchComponent";
 import { ClientOnly } from "../ClientOnly";
+import { toast } from 'sonner';
 
 let newTabCounter = 1;
 
@@ -22,7 +23,7 @@ interface Collection {
 
 const ChildrenLayoutContent = () => {
   const { openTab, updateTabRequestLabel } = useTabs();
-  const { savedRequests, deleteRequest, addRequest, setRequests } = useSavedRequests();
+  const { savedRequests, deleteRequest, addRequest, updateRequest, setRequests } = useSavedRequests();
   const [open, setOpen] = useState(false);
   const [isCreateCollectionOpen, setIsCreateCollectionOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -32,6 +33,8 @@ const ChildrenLayoutContent = () => {
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [currentRequestData, setCurrentRequestData] = useState<any>(null);
   const [expandedCollections, setExpandedCollections] = useState<Set<number>>(new Set());
+  const [draggedRequestId, setDraggedRequestId] = useState<number | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<number | null>(null);
 
 
   const fetchCollections = async () => {
@@ -248,6 +251,41 @@ const ChildrenLayoutContent = () => {
     }
   };
 
+  const handleMoveRequest = async (requestId: number, newCollectionId: number) => {
+    const userId = localStorage.getItem('user_id');
+    if (!userId) {
+      toast.error("User not found");
+      return;
+    }
+
+    try {
+      const response = await ApiService.put(`/requests/${requestId}?userId=${userId}`, {
+        collection_id: newCollectionId
+      });
+
+      if (response.ok) {
+        toast.success("Request moved successfully!");
+        await fetchCollections(); // Refresh collections to show the move
+      } else {
+        toast.error(response.error || "Failed to move request.");
+      }
+    } catch (error) {
+      console.error("Error moving request:", error);
+      toast.error("An error occurred while moving the request.");
+    }
+  };
+
+  const handleDrop = (collectionId: number) => {
+    if (draggedRequestId && draggedRequestId !== collectionId) {
+      const originalCollection = collections.find(c => c.requests.some(r => r.id === draggedRequestId));
+      if (originalCollection && originalCollection.id !== collectionId) {
+        handleMoveRequest(draggedRequestId, collectionId);
+      }
+    }
+    setDraggedRequestId(null);
+    setDropTargetId(null);
+  };
+
   return (
     <div className="bg-[#272c34]" ref={dropdownRef}>
       <aside className="w-[260px] text-white p-4 space-y-4 bg-[#161b22] rounded-tl-2xl h-full overflow-y-auto">
@@ -286,7 +324,21 @@ const ChildrenLayoutContent = () => {
             {collections.length > 0 ? (
               <div className="space-y-1">
                 {collections.map((collection) => (
-                  <div key={collection.id}>
+                  <div 
+                    key={collection.id}
+                    onDrop={() => handleDrop(collection.id)}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      const originalCollection = collections.find(c => c.requests.some(r => r.id === draggedRequestId));
+                      if (originalCollection && originalCollection.id !== collection.id) {
+                        setDropTargetId(collection.id);
+                      }
+                    }}
+                    onDragLeave={() => setDropTargetId(null)}
+                    className={`transition-colors duration-200 rounded-md ${
+                      dropTargetId === collection.id ? 'bg-blue-900/50' : ''
+                    }`}
+                  >
                     <div
                       onClick={() => toggleCollection(collection.id)}
                       className="flex items-center justify-between p-2 rounded-md bg-[#21262d] hover:bg-[#2a2f38] cursor-pointer group"
@@ -302,6 +354,12 @@ const ChildrenLayoutContent = () => {
                           .map(request => (
                             <div
                               key={request.id}
+                              draggable
+                              onDragStart={() => setDraggedRequestId(request.id)}
+                              onDragEnd={() => {
+                                setDraggedRequestId(null);
+                                setDropTargetId(null);
+                              }}
                               onClick={() => handleOpenSavedRequest(request)}
                               className="flex items-center justify-between p-2 rounded-md bg-[#2a2f38] hover:bg-[#3a3f48] cursor-pointer group relative"
                             >
