@@ -33,11 +33,13 @@ export class ApiService {
         }
       });
 
+      const { headers: customHeaders, ...restOptions } = options;
+
       const response = await fetch(url, {
-        ...options,
+        ...restOptions,
         headers: {
           ...headers,
-          ...options.headers,
+          ...customHeaders,
         },
       });
 
