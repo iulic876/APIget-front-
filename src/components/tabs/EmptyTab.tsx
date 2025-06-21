@@ -16,7 +16,7 @@ export const EmptyTab = () => {
     },
     {
       title: "Quick Search",
-      description: "Command + Shift + T to open search",
+      description: "Commandj + K to open search",
       icon: <Keyboard className="w-6 h-6 text-cyan-400" />,
     },
   ];

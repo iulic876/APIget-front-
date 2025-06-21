@@ -3,11 +3,11 @@ import { TabsProvider } from "@/components/tabs/TabsContext";
 import { SavedRequestsProvider } from "@/components/context/SavedRequestsContext";
 import { ReactNode } from "react";
 
-type RootLayoutProps = {
+type CollectionsLayoutProps = {
   children: ReactNode;
 };
 
-export const RootLayout = ({ children }: RootLayoutProps) => {
+export const CollectionsLayout = ({ children }: CollectionsLayoutProps) => {
   return (
     <div className="border-neutral-200 border-[0.5] rounded-2xl">
       <SavedRequestsProvider>
@@ -23,4 +23,4 @@ export const RootLayout = ({ children }: RootLayoutProps) => {
   );
 };
 
-export default RootLayout;
+export default CollectionsLayout;

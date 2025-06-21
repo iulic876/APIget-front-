@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import ApiService from "@/services/api";
+import Cookies from 'js-cookie';
 
 interface User {
   id: number;
@@ -45,8 +46,15 @@ export function NavDropdown() {
         const response = await ApiService.get(`/auth/me/${userId}`);
         
         if (response.ok && response.data) {
-          // The user data is nested inside response.data.user
-          setUser(response.data.user);
+          const user = response.data.user;
+
+          // If the user doesn't have an avatar, generate one.
+          if (!user.avatar) {
+            const nameForAvatar = user.name.split(' ').join('+');
+            user.avatar = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=random`;
+          }
+          
+          setUser(user);
         } else {
           console.error('Failed to fetch user data');
           router.push('/login');
@@ -63,7 +71,11 @@ export function NavDropdown() {
   }, [router]);
 
   const handleLogout = () => {
+    // Clear all site data
     localStorage.clear();
+    Cookies.remove('auth_token', { path: '/' });
+
+    // Redirect to login
     router.push('/login');
   };
 

@@ -125,6 +125,7 @@ export const RequestBlock = ({ tabId, updateTabRequestLabel, requestLabel, saved
       method,
       url,
       body: body.trim() || undefined,
+      savedRequestId,
     });
 
     // Update the tab label if it was empty
