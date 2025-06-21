@@ -9,6 +9,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ApiService from "@/services/api";
+import Cookies from "js-cookie";
 
 export function LoginForm({
   className,
@@ -32,27 +33,26 @@ export function LoginForm({
     try {
       const response = await ApiService.post('/auth/login', data);
       
-      console.log('Login response:', response);
-      
-      if (response.ok && response.data?.user) {
+      if (response.ok && response.data?.user && response.data?.token) {
         // Store user data
         const userId = response.data.user.id.toString();
-        console.log('Storing user ID:', userId);
+        const token = response.data.token;
         
         localStorage.setItem('user_id', userId);
         localStorage.setItem('user_name', response.data.user.name);
         localStorage.setItem('user_email', response.data.user.email);
         
-        console.log('User data stored in localStorage');
-        router.push('/product/collections');
+        Cookies.set('auth_token', token, { expires: 7, path: '/' });
+        
+        // Force a full page reload to ensure the cookie is available everywhere
+        window.location.href = '/product/collections';
+        
       } else {
-        console.error('Login failed:', response.error);
         setError(response.error || 'Invalid email or password');
+        setLoading(false);
       }
     } catch (err) {
-      console.error('Login error:', err);
       setError('An unexpected error occurred. Please try again.');
-    } finally {
       setLoading(false);
     }
   };

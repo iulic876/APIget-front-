@@ -1,3 +1,4 @@
+import Cookies from 'js-cookie';
 const API_BASE_URL = 'http://localhost:3001/api';
 
 export class ApiService {
@@ -12,19 +13,30 @@ export class ApiService {
   }> {
     try {
       const url = `${API_BASE_URL}${endpoint}`;
+      
+      const token = Cookies.get('auth_token');
+      
+      // Build headers safely
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       console.log('Making API request to:', url);
       console.log('With options:', {
         ...options,
         headers: {
-          'Content-Type': 'application/json',
+          ...headers,
           ...options.headers,
-        },
+        }
       });
 
       const response = await fetch(url, {
         ...options,
         headers: {
-          'Content-Type': 'application/json',
+          ...headers,
           ...options.headers,
         },
       });

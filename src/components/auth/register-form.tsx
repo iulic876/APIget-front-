@@ -9,6 +9,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ApiService from "@/services/api";
+import Cookies from "js-cookie";
 
 export function RegisterForm({
   className,
@@ -36,16 +37,8 @@ export function RegisterForm({
       console.log('Registration response:', response);
       
       if (response.ok && response.data?.user) {
-        // Store user data
-        const userId = response.data.user.id.toString();
-        console.log('Storing user ID:', userId);
-        
-        localStorage.setItem('user_id', userId);
-        localStorage.setItem('user_name', response.data.user.name);
-        localStorage.setItem('user_email', response.data.user.email);
-        
-        console.log('User data stored in localStorage');
-        router.push('/product/collections');
+        // Registration successful, redirect to login
+        router.push('/login?status=registered');
       } else {
         setError(response.error || 'Registration failed. Please try again.');
       }
