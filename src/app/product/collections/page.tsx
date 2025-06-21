@@ -5,7 +5,7 @@ import { TabOpener } from "@/components/tabs/TabOpener";
 
 export default function Page() {
   return (
-    <div className="">
+    <div className="" suppressHydrationWarning>
       <TabsBar />
       <TabContent />
     </div>

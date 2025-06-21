@@ -23,6 +23,7 @@ export function TeamSwitcher() {
   const [workspace, setWorkspace] = React.useState<Workspace | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [userName, setUserName] = React.useState<string>("");
 
   React.useEffect(() => {
     const fetchWorkspace = async () => {
@@ -31,6 +32,9 @@ export function TeamSwitcher() {
         setError(null);
 
         const userId = localStorage.getItem('user_id');
+        const storedUserName = localStorage.getItem('user_name');
+        setUserName(storedUserName || "");
+        
         console.log('Current user ID:', userId);
         
         if (!userId) {
@@ -68,6 +72,7 @@ export function TeamSwitcher() {
       fetchWorkspace();
     } else {
       console.error('No user ID available in localStorage');
+      setLoading(false);
     }
   }, []);
 
@@ -100,9 +105,7 @@ export function TeamSwitcher() {
               {workspace?.name || "No workspace"}
             </span>
             <span className="text-xs text-[#94a1b2]">
-              {workspace?.owner_name ||
-                localStorage.getItem("user_name") ||
-                "User"}
+              {workspace?.owner_name || userName || "User"}
             </span>
           </div>
           <ChevronsUpDown className="ml-auto h-4 w-4 text-[#94a1b2]" />

@@ -7,30 +7,45 @@ import { useRouter } from "next/navigation";
 import Router from "next/router";
 import { ClientTeamSwitcher } from "./ClientTeamSwitcher";
 import { ClientNavDropdown } from "./ClientNavDropdown";
+import { ClientOnly } from "../ClientOnly";
 
 export const MainRootLayout = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter()
   return (
     <div className="flex h-screen">
       <aside className="w-[60px] bg-[#272c34] text-white flex flex-col items-center py-4 space-y-6">
-       
         <nav className="flex flex-col gap-6 mt-12">
-          <Home size={20} onClick={() => router.push("/collections")} />
-          <Book size={20} onClick={() => router.push("/flow")} />
-          <FolderKanban size={20} />
-          <History size={20} />
-          <Settings size={20} />
-          <Users size={20} />
+          <Home size={20} onClick={() => router.push("/product/collections")} />
+          <Book size={20} onClick={() => router.push("/product/flow")} />
+          <FolderKanban
+            size={20}
+            onClick={() => router.push("/product/working")}
+          />
+          <History size={20} onClick={() => router.push("/product/working")} />
+          <Settings size={20} onClick={() => router.push("/product/working")} />
+          <Users size={20} onClick={() => router.push("/product/working")} />
         </nav>
       </aside>
       <div className="flex flex-col flex-1 overflow-hidden">
         <header className="h-12 bg-[#272c34] text-white flex items-center px-4">
           <div className="w-1/4">
-            <ClientTeamSwitcher />
+            <ClientOnly
+              fallback={
+                <div className="w-full h-8 bg-gray-600 rounded animate-pulse" />
+              }
+            >
+              <ClientTeamSwitcher />
+            </ClientOnly>
           </div>
 
           <div className="ml-auto text-xs">
-            <ClientNavDropdown />
+            <ClientOnly
+              fallback={
+                <div className="w-20 h-6 bg-gray-600 rounded animate-pulse" />
+              }
+            >
+              <ClientNavDropdown />
+            </ClientOnly>
           </div>
         </header>
         <main className="flex-1 bg-[#161b22] overflow-hidden">{children}</main>

@@ -10,6 +10,7 @@ import ApiService from "@/services/api";
 import { SaveRequestDialog } from "../collections/SaveRequestDialog";
 import { CreateCollectionDialog } from "../collections/CreateCollectionDialog";
 import { SearchComponent } from "../SearchComponent";
+import { ClientOnly } from "../ClientOnly";
 
 let newTabCounter = 1;
 
@@ -19,7 +20,7 @@ interface Collection {
   requests: SavedRequest[];
 }
 
-export const ChildrenLayout = () => {
+const ChildrenLayoutContent = () => {
   const { openTab, updateTabRequestLabel } = useTabs();
   const { savedRequests, deleteRequest, addRequest, setRequests } = useSavedRequests();
   const [open, setOpen] = useState(false);
@@ -375,5 +376,13 @@ export const ChildrenLayout = () => {
         />
       </aside>
     </div>
+  );
+};
+
+export const ChildrenLayout = () => {
+  return (
+    <ClientOnly>
+      <ChildrenLayoutContent />
+    </ClientOnly>
   );
 };

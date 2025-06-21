@@ -109,27 +109,18 @@ export function NavDropdown() {
 
         <DropdownMenuSeparator className="bg-[#2e2f3e]" />
 
-        <DropdownMenuItem className="gap-2 text-sm hover:bg-[#2e2f3e]">
-          <IconRocket size={16} />
-          Upgrade plan
-        </DropdownMenuItem>
+        
+
+       
 
         <DropdownMenuItem className="gap-2 text-sm hover:bg-[#2e2f3e]">
-          <IconBrush size={16} />
-          Personalize
-        </DropdownMenuItem>
-
-        <DropdownMenuItem className="gap-2 text-sm hover:bg-[#2e2f3e]">
-          <IconSettings size={16} />
+          <IconSettings size={16} href="/settings"/>
           Settings
         </DropdownMenuItem>
 
         <DropdownMenuSeparator className="bg-[#2e2f3e]" />
 
-        <DropdownMenuItem className="gap-2 text-sm hover:bg-[#2e2f3e]">
-          <IconHelp size={16} />
-          Help
-        </DropdownMenuItem>
+       
 
         <DropdownMenuItem 
           className="gap-2 text-sm text-[#f87171] hover:bg-[#2e2f3e]"
