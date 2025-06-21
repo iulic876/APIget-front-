@@ -9,6 +9,7 @@ import { useState, useEffect, useRef } from "react";
 import ApiService from "@/services/api";
 import { SaveRequestDialog } from "../collections/SaveRequestDialog";
 import { CreateCollectionDialog } from "../collections/CreateCollectionDialog";
+import { SearchComponent } from "../SearchComponent";
 
 let newTabCounter = 1;
 
@@ -23,6 +24,7 @@ export const ChildrenLayout = () => {
   const { savedRequests, deleteRequest, addRequest, setRequests } = useSavedRequests();
   const [open, setOpen] = useState(false);
   const [isCreateCollectionOpen, setIsCreateCollectionOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -74,6 +76,11 @@ export const ChildrenLayout = () => {
     fetchCollections();
   }, []);
 
+  // Debug: Track search modal state
+  useEffect(() => {
+    console.log('Search modal state changed:', isSearchOpen);
+  }, [isSearchOpen]);
+
   // Add keyboard shortcut listener for Command+N
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -91,6 +98,13 @@ export const ChildrenLayout = () => {
           event.preventDefault(); // Prevent default browser behavior
           setIsCreateCollectionOpen(true);
         }
+      }
+
+      // Check for Command+K (Mac) or Ctrl+K (Windows/Linux) to open search
+      if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
+        console.log('Command+K pressed - opening search');
+        event.preventDefault(); // Prevent default browser behavior
+        setIsSearchOpen(true);
       }
     };
 
@@ -210,6 +224,29 @@ export const ChildrenLayout = () => {
     // For now, we just log it.
   };
 
+  // Handle search result selection
+  const handleSearchResult = (result: any) => {
+    console.log('Search result selected:', result);
+    if (result.type === 'request') {
+      // Find the request in collections
+      const request = collections
+        .flatMap(collection => collection.requests)
+        .find(req => req.id === parseInt(result.id.replace('request-', '')));
+      
+      if (request) {
+        handleOpenSavedRequest(request);
+      }
+    } else if (result.type === 'collection') {
+      // Expand the collection
+      const collectionId = parseInt(result.id.replace('collection-', ''));
+      setExpandedCollections(prev => {
+        const newSet = new Set(prev);
+        newSet.add(collectionId);
+        return newSet;
+      });
+    }
+  };
+
   return (
     <div className="bg-[#272c34]" ref={dropdownRef}>
       <aside className="w-[260px] text-white p-4 space-y-4 bg-[#161b22] rounded-tl-2xl h-full overflow-y-auto">
@@ -224,7 +261,7 @@ export const ChildrenLayout = () => {
           <div className="flex items-center gap-2 mb-4">
             <button
               onClick={handleNewRequest}
-              className="text-sm text-purple-400 hover:text-white border border-dashed border-purple-600 px-3 py-1 rounded-md"
+              className="text-sm text-purple-400 hover:text-white border border-dashed border-purple-600 px-3 py-2 rounded-md"
             >
               + New
             </button>
@@ -329,6 +366,12 @@ export const ChildrenLayout = () => {
           open={isCreateCollectionOpen}
           onClose={() => setIsCreateCollectionOpen(false)}
           onCollectionCreated={fetchCollections}
+        />
+        <SearchComponent
+          isOpen={isSearchOpen}
+          onClose={() => setIsSearchOpen(false)}
+          onSelectResult={handleSearchResult}
+          collections={collections}
         />
       </aside>
     </div>
