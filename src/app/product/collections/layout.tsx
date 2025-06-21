@@ -9,7 +9,7 @@ type LayoutProps = {
 
 export default function Layout({ children }: LayoutProps) {
   return (
-    <div className="border-neutral-200 border-[0.5] rounded-2xl">
+    <div className="border-black border-[0.5] rounded-2xl">
       <SavedRequestsProvider>
         <TabsProvider>
           <div className="flex h-screen z-0">
