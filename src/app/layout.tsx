@@ -3,6 +3,7 @@ import "./globals.css";
 import { AppWrapper } from "@/components/AppWrapper";
 import { AuthLayout } from "@/components/layout/AuthLayout";
 import { Analytics } from "@vercel/analytics/next";
+import { PostHogProvider } from "@/components/PostHogProvider";
 import Script from "next/script";
 
 export const metadata: Metadata = {
@@ -18,6 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body suppressHydrationWarning>
+        <PostHogProvider />
         <AppWrapper>
           <AuthLayout>
             {children}

@@ -1,7 +1,7 @@
 'use client'
 import { useTabs } from "../tabs/TabsContext";
 import { useSavedRequests, SavedRequest } from "../context/SavedRequestsContext";
-import { Book, MoreVertical, ChevronRight, ChevronDown } from "lucide-react";
+import { Book, MoreVertical, ChevronRight, ChevronDown, Play } from "lucide-react";
 import { RequestBlock } from "../RequestBlock";
 import { Button } from "../ui/button";
 import { ImportModal } from "../collections/ImportDialog";
@@ -12,6 +12,8 @@ import { CreateCollectionDialog } from "../collections/CreateCollectionDialog";
 import { SearchComponent } from "../SearchComponent";
 import { ClientOnly } from "../ClientOnly";
 import { toast } from 'sonner';
+import { EllipsisVertical } from "lucide-react";
+import { CollectionRunner } from "../collections/CollectionRunner";
 
 let newTabCounter = 1;
 
@@ -286,6 +288,15 @@ const ChildrenLayoutContent = () => {
     setDropTargetId(null);
   };
 
+  const handleOpenCollectionRunner = (collection: Collection) => {
+    const newTabId = `collection-runner-${collection.id}`;
+    openTab({
+      id: newTabId,
+      label: `Run: ${collection.name}`,
+      content: <CollectionRunner collection={collection} />
+    });
+  };
+
   return (
     <div className="bg-[#272c34]" ref={dropdownRef}>
       <aside className="w-[260px] text-white p-4 space-y-4 bg-[#161b22] rounded-tl-2xl h-full overflow-y-auto">
@@ -304,7 +315,7 @@ const ChildrenLayoutContent = () => {
             >
               + New
             </button>
-            <Button 
+            <Button
               onClick={() => setIsCreateCollectionOpen(true)}
               className="text-sm bg-neutral-600 hover:bg-neutral-700"
             >
@@ -324,19 +335,24 @@ const ChildrenLayoutContent = () => {
             {collections.length > 0 ? (
               <div className="space-y-1">
                 {collections.map((collection) => (
-                  <div 
+                  <div
                     key={collection.id}
                     onDrop={() => handleDrop(collection.id)}
                     onDragOver={(e) => {
                       e.preventDefault();
-                      const originalCollection = collections.find(c => c.requests.some(r => r.id === draggedRequestId));
-                      if (originalCollection && originalCollection.id !== collection.id) {
+                      const originalCollection = collections.find((c) =>
+                        c.requests.some((r) => r.id === draggedRequestId)
+                      );
+                      if (
+                        originalCollection &&
+                        originalCollection.id !== collection.id
+                      ) {
                         setDropTargetId(collection.id);
                       }
                     }}
                     onDragLeave={() => setDropTargetId(null)}
                     className={`transition-colors duration-200 rounded-md ${
-                      dropTargetId === collection.id ? 'bg-blue-900/50' : ''
+                      dropTargetId === collection.id ? "bg-blue-900/50" : ""
                     }`}
                   >
                     <div
@@ -344,61 +360,86 @@ const ChildrenLayoutContent = () => {
                       className="flex items-center justify-between p-2 rounded-md bg-[#21262d] hover:bg-[#2a2f38] cursor-pointer group"
                     >
                       <div className="flex items-center gap-2">
-                        {expandedCollections.has(collection.id) ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                        <span className="text-sm truncate">{collection.name}</span>
+                        {expandedCollections.has(collection.id) ? (
+                          <ChevronDown size={16} />
+                        ) : (
+                          <ChevronRight size={16} />
+                        )}
+                        <span className="text-sm truncate">
+                          {collection.name}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenCollectionRunner(collection);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 text-green-300 hover:text-green-300 transition-opacity p-1"
+                          title="Run Collection"
+                        >
+                          <Play size={14} />
+                        </button>
+                        <EllipsisVertical size={14}/>
                       </div>
                     </div>
                     {expandedCollections.has(collection.id) && (
                       <div className="pl-6 pt-1 space-y-1">
-                        {(collection.requests || [])
-                          .map(request => (
-                            <div
-                              key={request.id}
-                              draggable
-                              onDragStart={() => setDraggedRequestId(request.id)}
-                              onDragEnd={() => {
-                                setDraggedRequestId(null);
-                                setDropTargetId(null);
-                              }}
-                              onClick={() => handleOpenSavedRequest(request)}
-                              className="flex items-center justify-between p-2 rounded-md bg-[#2a2f38] hover:bg-[#3a3f48] cursor-pointer group relative"
-                            >
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span className={`text-xs px-1 py-0.5 rounded font-mono ${
-                                    request.method === 'GET' ? 'bg-green-600' :
-                                    request.method === 'POST' ? 'bg-blue-600' :
-                                    request.method === 'PUT' ? 'bg-yellow-600' :
-                                    'bg-red-600'
-                                  }`}>
-                                    {request.method}
-                                  </span>
-                                  <span className="text-sm truncate">{request.name}</span>
-                                </div>
-                              </div>
-                              <div className="relative">
-                                <button
-                                  onClick={(e) => toggleDropdown(e, request.id)}
-                                  className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white transition-opacity p-1"
+                        {(collection.requests || []).map((request) => (
+                          <div
+                            key={request.id}
+                            draggable
+                            onDragStart={() => setDraggedRequestId(request.id)}
+                            onDragEnd={() => {
+                              setDraggedRequestId(null);
+                              setDropTargetId(null);
+                            }}
+                            onClick={() => handleOpenSavedRequest(request)}
+                            className="flex items-center justify-between p-2 rounded-md bg-[#2a2f38] hover:bg-[#3a3f48] cursor-pointer group relative"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`text-xs px-1 py-0.5 rounded font-mono ${
+                                    request.method === "GET"
+                                      ? "bg-green-600"
+                                      : request.method === "POST"
+                                      ? "bg-blue-600"
+                                      : request.method === "PUT"
+                                      ? "bg-yellow-600"
+                                      : "bg-red-600"
+                                  }`}
                                 >
-                                  <MoreVertical size={14} />
-                                </button>
-                                {openDropdownId === request.id && (
-                                  <div className="absolute right-0 top-6 bg-[#1a1d23] border border-[#2e2f3e] rounded-md shadow-lg z-10 min-w-[120px]">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleDeleteRequest(request.id);
-                                      }}
-                                      className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-[#2a2f38] hover:text-red-300 transition-colors"
-                                    >
-                                      Delete
-                                    </button>
-                                  </div>
-                                )}
+                                  {request.method}
+                                </span>
+                                <span className="text-sm truncate">
+                                  {request.name}
+                                </span>
                               </div>
                             </div>
-                          ))}
+                            <div className="relative">
+                              <button
+                                onClick={(e) => toggleDropdown(e, request.id)}
+                                className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white transition-opacity p-1"
+                              >
+                                <MoreVertical size={14} />
+                              </button>
+                              {openDropdownId === request.id && (
+                                <div className="absolute right-0 top-6 bg-[#1a1d23] border border-[#2e2f3e] rounded-md shadow-lg z-10 min-w-[120px]">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteRequest(request.id);
+                                    }}
+                                    className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-[#2a2f38] hover:text-red-300 transition-colors"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -415,7 +456,7 @@ const ChildrenLayoutContent = () => {
           onClose={handleClose}
           onSubmit={handleImport}
         />
-        <SaveRequestDialog 
+        <SaveRequestDialog
           open={isSaveModalOpen}
           onClose={() => setIsSaveModalOpen(false)}
           collections={collections}

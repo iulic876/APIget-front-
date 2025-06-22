@@ -22,7 +22,7 @@ export const MainRootLayout = ({ children }: { children: React.ReactNode }) => {
             onClick={() => router.push("/product/working")}
           />
           <History size={20} onClick={() => router.push("/product/working")} />
-          <Settings size={20} onClick={() => router.push("/product/working")} />
+          <Settings size={20} onClick={() => router.push("/product/settings")} />
           <Users size={20} onClick={() => router.push("/product/working")} />
         </nav>
       </aside>
