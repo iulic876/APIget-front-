@@ -8,6 +8,8 @@ export interface SavedRequest {
   method: string;
   url: string;
   body?: any; // Can be object or string
+  preRequestScript?: string;
+  postRequestScript?: string;
   collection_id?: number;
   createdAt: string; // API sends string
 }

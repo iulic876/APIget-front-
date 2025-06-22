@@ -19,7 +19,7 @@ export const MainRootLayout = ({ children }: { children: React.ReactNode }) => {
           <Book size={20} onClick={() => router.push("/product/flow")} />
           <FolderKanban
             size={20}
-            onClick={() => router.push("/product/working")}
+            onClick={() => router.push("/product/user-model")}
           />
           <History size={20} onClick={() => router.push("/product/working")} />
           <Settings size={20} onClick={() => router.push("/product/settings")} />

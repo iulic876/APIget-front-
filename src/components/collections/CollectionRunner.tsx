@@ -404,19 +404,7 @@ export const CollectionRunner = ({ collection }: CollectionRunnerProps) => {
       </div>
 
       {/* Progress */}
-      <div className="border-b border-[#2e2f3e] p-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium">Progress</span>
-          <span className="text-sm text-gray-400">
-            {completedCount} completed, {failedCount} failed, {totalCount} total
-          </span>
-        </div>
-        <Progress value={progress} className="h-2" />
-        <div className="flex items-center gap-4 mt-2 text-sm text-gray-400">
-          <span>Current: {isRunning ? collection.requests[currentIndex]?.name : 'None'}</span>
-          <span>Duration: {results.reduce((acc, r) => acc + (r.duration || 0), 0)}ms</span>
-        </div>
-      </div>
+    
 
       {/* Results */}
       <div className="flex-1 overflow-y-auto p-4">

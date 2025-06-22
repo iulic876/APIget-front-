@@ -12,7 +12,6 @@ import { CreateCollectionDialog } from "../collections/CreateCollectionDialog";
 import { SearchComponent } from "../SearchComponent";
 import { ClientOnly } from "../ClientOnly";
 import { toast } from 'sonner';
-import { EllipsisVertical } from "lucide-react";
 import { CollectionRunner } from "../collections/CollectionRunner";
 
 let newTabCounter = 1;
@@ -47,9 +46,18 @@ const ChildrenLayoutContent = () => {
       if (response.ok) {
         const collectionsArray = response.data.collections || response.data;
         if (Array.isArray(collectionsArray)) {
-          setCollections(collectionsArray);
+          // Map snake_case to camelCase for script fields
+          const mappedCollections = collectionsArray.map(collection => ({
+            ...collection,
+            requests: (collection.requests || []).map((request: any) => ({
+              ...request,
+              preRequestScript: request.pre_request_script,
+              postRequestScript: request.post_request_script,
+            })),
+          }));
+          setCollections(mappedCollections);
           // Now, extract all requests from all collections and update the SavedRequestsContext
-          const allRequests = collectionsArray.flatMap(collection => collection.requests || []);
+          const allRequests = mappedCollections.flatMap(collection => collection.requests || []);
           setRequests(allRequests);
         } else {
           setCollections([]);
@@ -380,7 +388,7 @@ const ChildrenLayoutContent = () => {
                         >
                           <Play size={14} />
                         </button>
-                        <EllipsisVertical size={14}/>
+                  
                       </div>
                     </div>
                     {expandedCollections.has(collection.id) && (

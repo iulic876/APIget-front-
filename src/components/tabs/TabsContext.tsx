@@ -17,6 +17,7 @@ type TabsContextType = {
   closeTab: (id: string) => void;
   updateTabLabel: (id: string, label: string) => void;
   updateTabRequestLabel: (id: string, requestLabel: string) => void;
+  reorderTabs: (oldIndex: number, newIndex: number) => void;
 };
 
 const TabsContext = createContext<TabsContextType | undefined>(undefined);
@@ -72,6 +73,15 @@ export const TabsProvider = ({ children }: { children: ReactNode }) => {
     );
   };
 
+  const reorderTabs = (oldIndex: number, newIndex: number) => {
+    setTabs((prev) => {
+      const newTabs = [...prev];
+      const [removed] = newTabs.splice(oldIndex, 1);
+      newTabs.splice(newIndex, 0, removed);
+      return newTabs;
+    });
+  };
+
   return (
     <TabsContext.Provider
       value={{
@@ -82,6 +92,7 @@ export const TabsProvider = ({ children }: { children: ReactNode }) => {
         closeTab,
         updateTabLabel,
         updateTabRequestLabel,
+        reorderTabs,
       }}
     >
       {children}
