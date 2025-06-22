@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { Play, Pause, Square, CheckCircle, XCircle, Clock, Settings, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import ApiService from '@/services/api';
+import { toast } from 'sonner';
 
 interface Request {
   id: number;
@@ -47,6 +49,8 @@ export const CollectionRunner = ({ collection }: CollectionRunnerProps) => {
   const [progress, setProgress] = useState(0);
   const [executionMode, setExecutionMode] = useState<'sequential' | 'parallel'>('sequential');
   const [delayBetweenRequests, setDelayBetweenRequests] = useState(1000);
+  const [runId, setRunId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Initialize results when collection changes
   useEffect(() => {
@@ -60,141 +64,208 @@ export const CollectionRunner = ({ collection }: CollectionRunnerProps) => {
     setResults(initialResults);
     setCurrentIndex(0);
     setProgress(0);
+    setRunId(null);
   }, [collection]);
 
-  // Mock API call
-  const mockApiCall = async (request: Request): Promise<RequestResult> => {
-    const startTime = Date.now();
+  // Real API call to execute collection
+  const executeCollection = async () => {
+    setIsLoading(true);
     
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, Math.random() * 2000 + 500));
-    
-    const duration = Date.now() - startTime;
-    
-    // Simulate success/failure
-    const isSuccess = Math.random() > 0.2; // 80% success rate
-    
-    if (isSuccess) {
-      return {
-        id: request.id,
-        name: request.name,
-        method: request.method,
-        url: request.url,
-        status: 'completed',
-        duration,
-        response: {
-          status: 200,
-          statusText: 'OK',
-          data: { message: 'Success', timestamp: new Date().toISOString() },
-          headers: { 'content-type': 'application/json' }
+    try {
+      const userId = localStorage.getItem('user_id');
+      if (!userId) {
+        toast.error('User not found. Please log in again.');
+        return;
+      }
+
+      const payload = {
+        executionMode,
+        delayBetweenRequests,
+        environment: 'development', // Default for now
+        variables: {}, // Empty for now, can be extended later
+        userId: parseInt(userId)
+      };
+
+      console.log('Executing collection:', collection.id, 'with payload:', payload);
+
+      const response = await ApiService.post(`/collections/${collection.id}/run`, payload);
+      
+      if (response.ok && response.data) {
+        console.log('Collection run started:', response.data);
+        setRunId(response.data.runId);
+        
+        // If the backend returns immediate results, update the UI
+        if (response.data.results && Array.isArray(response.data.results)) {
+          setResults(response.data.results);
+          setProgress((response.data.results.length / collection.requests.length) * 100);
         }
-      };
-    } else {
-      return {
-        id: request.id,
-        name: request.name,
-        method: request.method,
-        url: request.url,
-        status: 'failed',
-        duration,
-        error: 'Request failed - Network error'
-      };
+        
+        // If the run is already completed
+        if (response.data.status === 'completed') {
+          setIsRunning(false);
+          setIsPaused(false);
+          toast.success('Collection run completed!');
+        } else {
+          setIsRunning(true);
+          setIsPaused(false);
+          toast.success('Collection run started!');
+        }
+      } else if (response.status === 404) {
+        // Backend endpoint not implemented yet, fall back to mock
+        console.log('Backend endpoint not found, using mock execution');
+        toast.info('Backend endpoint not implemented yet. Using mock execution.');
+        startMockExecution();
+      } else {
+        console.error('Failed to start collection run:', response.error);
+        toast.error(response.error || 'Failed to start collection run');
+      }
+    } catch (error) {
+      console.error('Error executing collection:', error);
+      toast.error('An error occurred while starting the collection run');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const runSequential = async () => {
+  // Mock execution fallback
+  const startMockExecution = () => {
     setIsRunning(true);
     setIsPaused(false);
+    setRunId('mock-run-' + Date.now());
     
-    for (let i = 0; i < collection.requests.length; i++) {
-      if (!isRunning) break;
-      
-      if (isPaused) {
-        await new Promise(resolve => {
-          const checkPause = () => {
-            if (!isPaused) resolve(true);
-            else setTimeout(checkPause, 100);
-          };
-          checkPause();
-        });
+    // Simulate sequential execution
+    const executeSequentially = async () => {
+      for (let i = 0; i < collection.requests.length; i++) {
+        if (!isRunning) break;
+        
+        if (isPaused) {
+          await new Promise(resolve => {
+            const checkPause = () => {
+              if (!isPaused) resolve(true);
+              else setTimeout(checkPause, 100);
+            };
+            checkPause();
+          });
+        }
+        
+        setCurrentIndex(i);
+        const request = collection.requests[i];
+        
+        // Update status to running
+        setResults(prev => prev.map(r => 
+          r.id === request.id ? { ...r, status: 'running' } : r
+        ));
+        
+        // Simulate API call
+        const startTime = Date.now();
+        await new Promise(resolve => setTimeout(resolve, Math.random() * 2000 + 500));
+        const duration = Date.now() - startTime;
+        
+        // Simulate success/failure
+        const isSuccess = Math.random() > 0.2;
+        
+        const result: RequestResult = {
+          id: request.id,
+          name: request.name,
+          method: request.method,
+          url: request.url,
+          status: isSuccess ? 'completed' : 'failed',
+          duration,
+          ...(isSuccess ? {
+            response: {
+              status: 200,
+              statusText: 'OK',
+              data: { message: 'Success', timestamp: new Date().toISOString() },
+              headers: { 'content-type': 'application/json' }
+            }
+          } : {
+            error: 'Request failed - Network error'
+          })
+        };
+        
+        // Update results
+        setResults(prev => prev.map(r => 
+          r.id === result.id ? result : r
+        ));
+        
+        // Update progress
+        const newProgress = ((i + 1) / collection.requests.length) * 100;
+        setProgress(newProgress);
+        
+        // Delay between requests
+        if (i < collection.requests.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, delayBetweenRequests));
+        }
       }
       
-      setCurrentIndex(i);
-      const request = collection.requests[i];
-      
-      // Update status to running
-      setResults(prev => prev.map(r => 
-        r.id === request.id ? { ...r, status: 'running' } : r
-      ));
-      
-      // Execute request
-      const result = await mockApiCall(request);
-      
-      // Update results
-      setResults(prev => prev.map(r => 
-        r.id === result.id ? result : r
-      ));
-      
-      // Update progress
-      const newProgress = ((i + 1) / collection.requests.length) * 100;
-      setProgress(newProgress);
-      
-      // Delay between requests
-      if (i < collection.requests.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, delayBetweenRequests));
-      }
-    }
+      setIsRunning(false);
+      setIsPaused(false);
+      toast.success('Mock collection run completed!');
+    };
     
-    setIsRunning(false);
-    setIsPaused(false);
+    executeSequentially();
   };
 
-  const runParallel = async () => {
-    setIsRunning(true);
-    setIsPaused(false);
-    
-    // Mark all as running
-    setResults(prev => prev.map(r => ({ ...r, status: 'running' })));
-    
-    // Execute all requests in parallel
-    const promises = collection.requests.map(async (request, index) => {
-      const result = await mockApiCall(request);
-      return { result, index };
-    });
-    
-    const resultsWithIndex = await Promise.all(promises);
-    
-    // Update results in order
-    resultsWithIndex.forEach(({ result, index }) => {
-      setResults(prev => prev.map(r => 
-        r.id === result.id ? result : r
-      ));
-      setProgress(((index + 1) / collection.requests.length) * 100);
-    });
-    
-    setIsRunning(false);
-    setIsPaused(false);
-  };
+  // Poll for updates if run is in progress
+  useEffect(() => {
+    if (!isRunning || !runId) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await ApiService.get(`/collections/${collection.id}/runs/${runId}`);
+        
+        if (response.ok && response.data) {
+          const runData = response.data;
+          
+          // Update results if available
+          if (runData.results && Array.isArray(runData.results)) {
+            setResults(runData.results);
+            
+            const completedCount = runData.results.filter((r: any) => r.status === 'completed').length;
+            setProgress((completedCount / collection.requests.length) * 100);
+          }
+          
+          // Check if run is completed
+          if (runData.status === 'completed' || runData.status === 'failed') {
+            setIsRunning(false);
+            setIsPaused(false);
+            clearInterval(pollInterval);
+            
+            if (runData.status === 'completed') {
+              toast.success('Collection run completed!');
+            } else {
+              toast.error('Collection run failed!');
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error polling run status:', error);
+      }
+    }, 2000); // Poll every 2 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [isRunning, runId, collection.id, collection.requests.length]);
 
   const startExecution = () => {
-    if (executionMode === 'sequential') {
-      runSequential();
-    } else {
-      runParallel();
-    }
+    if (isLoading) return;
+    executeCollection();
   };
 
   const pauseExecution = () => {
     setIsPaused(true);
+    toast.info('Execution paused');
   };
 
   const resumeExecution = () => {
     setIsPaused(false);
+    toast.info('Execution resumed');
   };
 
   const stopExecution = () => {
     setIsRunning(false);
     setIsPaused(false);
+    setRunId(null);
+    toast.info('Execution stopped');
   };
 
   const resetExecution = () => {
@@ -202,6 +273,7 @@ export const CollectionRunner = ({ collection }: CollectionRunnerProps) => {
     setIsPaused(false);
     setCurrentIndex(0);
     setProgress(0);
+    setRunId(null);
     setResults(prev => prev.map(r => ({ ...r, status: 'pending' })));
   };
 
@@ -243,25 +315,11 @@ export const CollectionRunner = ({ collection }: CollectionRunnerProps) => {
           <div>
             <h1 className="text-xl font-semibold">Collection Runner</h1>
             <p className="text-gray-400 text-sm">{collection.name}</p>
+            {runId && (
+              <p className="text-xs text-gray-500 mt-1">Run ID: {runId}</p>
+            )}
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="default"
-              size="sm"
-              className="border-[#2e2f3e] hover:bg-[#2e2f3e] text-white"
-            >
-              <Settings className="w-4 h-4 mr-2" />
-              Settings
-            </Button>
-            <Button
-              variant="default"
-              size="sm"
-              className="border-[#2e2f3e] hover:bg-[#2e2f3e] text-white"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Export
-            </Button>
-          </div>
+         
         </div>
       </div>
 
@@ -273,10 +331,10 @@ export const CollectionRunner = ({ collection }: CollectionRunnerProps) => {
               <Button
                 onClick={startExecution}
                 className="bg-green-600 hover:bg-green-700"
-                disabled={results.length === 0}
+                disabled={results.length === 0 || isLoading}
               >
                 <Play className="w-4 h-4 mr-2" />
-                Run Collection
+                {isLoading ? 'Starting...' : 'Run Collection'}
               </Button>
             ) : (
               <>
